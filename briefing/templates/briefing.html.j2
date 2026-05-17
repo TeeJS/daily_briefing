@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;">
+<div style="max-width:720px;margin:0 auto;padding:24px 16px;">
+
+  <!-- ===== Macros: shared building blocks ===== -->
+
+  {%- macro section_header(emoji, title) %}
+  <h2 style="margin:0 0 12px;padding:8px 12px;background-color:#222;color:#fff;font-size:14px;font-weight:600;letter-spacing:0.02em;text-transform:uppercase;border-radius:4px;">
+    {{ emoji }} &nbsp; {{ title }}
+  </h2>
+  {%- endmacro %}
+
+  {%- macro stub_block(name) %}
+  <div style="padding:12px;background-color:#fafafa;border:1px dashed #ccc;border-radius:4px;font-size:13px;color:#888;font-style:italic;">
+    {{ name }} section — coming soon.
+  </div>
+  {%- endmacro %}
+
+  <!-- ===== Section macros: each renders ONE section's content ===== -->
+
+  {%- macro cal_block(calendar) %}
+    {{ section_header("📅", "Today's Schedule") }}
+    {% if calendar.status == "ready" %}
+      {% if not calendar.events %}
+        <div style="padding:8px 0;color:#666;font-size:14px;">Nothing on the calendar today.</div>
+      {% else %}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+          {% for ev in calendar.events %}
+          <tr>
+            <td style="padding:4px 8px 4px 0;vertical-align:top;color:#444;white-space:nowrap;">
+              {%- if ev.is_error -%}<span style="color:#b00;">error</span>{%- else -%}{{ ev.time_str }}{%- endif -%}
+            </td>
+            <td style="padding:4px 0;vertical-align:top;">
+              {%- if ev.is_error -%}
+                <span style="color:#b00;">{{ ev.calendar }}: {{ ev.error }}</span>
+              {%- else -%}
+                <div style="font-weight:500;color:#222;">{{ ev.summary }}</div>
+                <div style="font-size:12px;color:#888;margin-top:2px;">
+                  {{ ev.calendar }}{% if ev.location %} &middot; {{ ev.location }}{% endif %}
+                </div>
+              {%- endif -%}
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    {% elif calendar.status == "error" %}
+      <div style="padding:8px 0;color:#b00;font-size:13px;">Calendar fetch failed: {{ calendar.error }}</div>
+    {% else %}
+      {{ stub_block("Calendar") }}
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro claude_block(claude_usage) %}
+    {{ section_header("🤖", "Claude Usage") }}
+    {% if claude_usage.status == "ready" %}
+      {%- macro usage_row(label, pct, resets) %}
+        <tr>
+          <td style="padding:4px 8px 4px 0;vertical-align:top;color:#444;font-size:13px;">{{ label }}</td>
+          <td style="padding:4px 8px 4px 0;vertical-align:top;font-size:14px;font-weight:600;text-align:right;color:{% if pct is not none and pct >= 80 %}#b00{% elif pct is not none and pct >= 50 %}#a06000{% else %}#222{% endif %};">
+            {% if pct is not none %}{{ "%.0f"|format(pct) }}%{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% if resets %}
+        <tr>
+          <td colspan="2" style="padding:0 0 4px;font-size:11px;color:#888;">resets {{ resets }}</td>
+        </tr>
+        {% endif %}
+      {%- endmacro %}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+        {{ usage_row("5-hour session", claude_usage.session_pct, claude_usage.session_resets) }}
+        {{ usage_row("7 days (all)", claude_usage.week_pct, claude_usage.week_resets) }}
+        {{ usage_row("7 days (Sonnet)", claude_usage.week_sonnet_pct, claude_usage.week_sonnet_resets) }}
+        {% if claude_usage.extra_enabled %}
+          <tr>
+            <td style="padding:4px 8px 4px 0;vertical-align:top;color:#444;font-size:13px;">Extra usage</td>
+            <td style="padding:4px 8px 4px 0;vertical-align:top;font-size:14px;font-weight:600;text-align:right;color:#222;">
+              {% if claude_usage.extra_pct is not none %}{{ "%.0f"|format(claude_usage.extra_pct) }}%{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% if claude_usage.extra_used_dollars is not none and claude_usage.extra_limit_dollars is not none %}
+          <tr>
+            <td colspan="2" style="padding:0 0 4px;font-size:11px;color:#888;">
+              ${{ "%.2f"|format(claude_usage.extra_used_dollars) }} of ${{ "%.2f"|format(claude_usage.extra_limit_dollars) }}
+            </td>
+          </tr>
+          {% endif %}
+        {% endif %}
+      </table>
+    {% elif claude_usage.status == "error" %}
+      <div style="padding:8px 0;color:#b00;font-size:13px;">Claude usage fetch failed: {{ claude_usage.error }}</div>
+    {% else %}
+      {{ stub_block("Claude Usage") }}
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro email_list(items, sender_color, summary_color) %}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:13px;">
+      {% for item in items %}
+      <tr>
+        <td style="padding:4px 0;vertical-align:top;">
+          <div style="color:{{ sender_color }};font-size:12px;">{{ item.sender }}</div>
+          <div style="color:{{ summary_color }};">{{ item.summary }}</div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  {%- endmacro %}
+
+  {%- macro email_block(email) %}
+    {{ section_header("📧", "Important Emails") }}
+    {% if email.status == "ready" %}
+      {% if email.triage_failed %}
+        <div style="padding:6px 10px;margin-bottom:8px;background-color:#fff8e0;border:1px solid #e0c060;border-radius:4px;font-size:12px;color:#665020;">
+          Triage LLM failed — showing unranked fallback. ({{ email.triage_error }})
+        </div>
+      {% endif %}
+      {% if not email.action_today and not email.fyi %}
+        <div style="padding:8px 0;color:#666;font-size:14px;">Nothing notable in the last 24 hours.</div>
+      {% endif %}
+      {% if email.action_today %}
+        <h3 style="margin:8px 0 4px;font-size:12px;font-weight:600;color:#b00;text-transform:uppercase;letter-spacing:0.05em;">Action today</h3>
+        {{ email_list(email.action_today, "#666", "#222") }}
+      {% endif %}
+      {% if email.fyi %}
+        <h3 style="margin:12px 0 4px;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.05em;">FYI</h3>
+        {{ email_list(email.fyi, "#888", "#444") }}
+      {% endif %}
+    {% elif email.status == "error" %}
+      <div style="padding:8px 0;color:#b00;font-size:13px;">Email fetch failed: {{ email.error }}</div>
+    {% else %}
+      {{ stub_block("Email") }}
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro etsy_block(etsy) %}
+    {{ section_header("📦", "Etsy Orders to Ship") }}
+    {% if etsy.status == "ready" %}
+      {%- macro order_row(o, label_color, label_text) %}
+        <tr>
+          <td style="padding:4px 0;vertical-align:top;font-size:14px;color:#222;">
+            <div style="font-size:11px;color:{{ label_color }};text-transform:uppercase;letter-spacing:0.05em;">{{ label_text }}</div>
+            <div style="font-weight:500;">#{{ o.receipt_id }} &middot; {{ o.buyer_name }} &middot; ${{ "%.2f"|format(o.total_dollars or 0) }}</div>
+            <div style="font-size:12px;color:#666;margin-top:1px;">
+              {{ o.item_count }} item{% if o.item_count != 1 %}s{% endif %}
+              {%- if o.titles %} — {{ o.titles | join("; ") }}{% if o.more_titles %} +{{ o.more_titles }} more{% endif %}{% endif -%}
+            </div>
+          </td>
+        </tr>
+      {%- endmacro %}
+      {% if not etsy.overdue and not etsy.due_soon and not etsy.other_count %}
+        <div style="padding:8px 0;color:#666;font-size:14px;">✓ All orders shipped.</div>
+      {% else %}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+          {% if etsy.overdue %}
+            <tr><td style="padding:8px 0 4px;font-size:12px;font-weight:600;color:#b00;text-transform:uppercase;letter-spacing:0.05em;">Overdue ({{ etsy.overdue | length }})</td></tr>
+            {% for o in etsy.overdue %}{{ order_row(o, "#b00", o.days_overdue ~ "d overdue") }}{% endfor %}
+          {% endif %}
+          {% if etsy.due_soon %}
+            <tr><td style="padding:12px 0 4px;font-size:12px;font-weight:600;color:#a06000;text-transform:uppercase;letter-spacing:0.05em;">Due soon ({{ etsy.due_soon | length }})</td></tr>
+            {% for o in etsy.due_soon %}{{ order_row(o, "#a06000", "ship by " ~ o.ship_by_str) }}{% endfor %}
+          {% endif %}
+          {% if etsy.other_count %}
+            <tr><td style="padding:12px 0 4px;font-size:12px;color:#666;">
+              + {{ etsy.other_count }} other outstanding (${{ "%.2f"|format(etsy.other_total_dollars) }} total)
+            </td></tr>
+          {% endif %}
+        </table>
+      {% endif %}
+    {% elif etsy.status == "error" %}
+      <div style="padding:8px 0;color:#b00;font-size:13px;">Etsy fetch failed: {{ etsy.error }}</div>
+    {% else %}
+      {{ stub_block("Etsy Orders") }}
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro news_subsection(sub) %}
+    <h3 style="margin:12px 0 4px;font-size:12px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.05em;">{{ sub.title }}</h3>
+    {% if sub.status == "ready" %}
+      {% if sub.entries %}
+        <ul style="margin:0 0 4px;padding:0 0 0 18px;font-size:13px;color:#222;">
+          {% for item in sub.entries %}
+            <li style="margin:3px 0;line-height:1.35;">
+              <a href="{{ item.link }}" style="color:#1a4d99;text-decoration:none;">{{ item.title }}</a>
+              {% if item.source %}<span style="color:#888;font-size:11px;"> &middot; {{ item.source }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div style="font-size:12px;color:#888;font-style:italic;">No items in last 24 hours.</div>
+      {% endif %}
+    {% elif sub.status == "error" %}
+      <div style="font-size:12px;color:#b00;">Feed error: {{ sub.error }}</div>
+    {% else %}
+      <div style="font-size:12px;color:#888;font-style:italic;">Coming soon.</div>
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro news_block(news) %}
+    {{ section_header("📰", "News") }}
+    {% if news.status == "ready" %}
+      {%- set half = ((news.sections | length) + 1) // 2 %}
+      {%- set left_subs = news.sections[:half] %}
+      {%- set right_subs = news.sections[half:] %}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-right:10px;">
+            {% for sub in left_subs %}{{ news_subsection(sub) }}{% endfor %}
+          </td>
+          <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-left:10px;">
+            {% for sub in right_subs %}{{ news_subsection(sub) }}{% endfor %}
+          </td>
+        </tr>
+      </table>
+    {% elif news.status == "error" %}
+      <div style="padding:8px 0;color:#b00;font-size:13px;">News fetch failed: {{ news.error }}</div>
+    {% else %}
+      {{ stub_block("News") }}
+    {% endif %}
+  {%- endmacro %}
+
+  <!-- ===== Page header ===== -->
+
+  <div style="border-bottom:2px solid #222;padding-bottom:12px;margin-bottom:24px;">
+    <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em;">Daily Briefing</h1>
+    <div style="margin-top:4px;font-size:14px;color:#666;">{{ date_long }}</div>
+  </div>
+
+  <!-- ===== Row 1: Calendar | Claude Usage ===== -->
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+    <tr>
+      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-right:10px;">{{ cal_block(calendar) }}</td>
+      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-left:10px;">{{ claude_block(claude_usage) }}</td>
+    </tr>
+  </table>
+
+  <!-- ===== Row 2: Important Emails | Etsy Orders ===== -->
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+    <tr>
+      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-right:10px;">{{ email_block(email) }}</td>
+      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-left:10px;">{{ etsy_block(etsy) }}</td>
+    </tr>
+  </table>
+
+  <!-- ===== Row 3: News (full width, internal 2-col for subsections) ===== -->
+
+  <div style="margin-bottom:24px;">{{ news_block(news) }}</div>
+
+  <!-- ===== Footer ===== -->
+
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid #ddd;font-size:12px;color:#999;text-align:center;">
+    Generated {{ generated_at }} &middot;
+    <a href="{{ archive_url }}" style="color:#999;text-decoration:underline;">View archive</a>
+  </div>
+
+</div>
+</body>
+</html>
