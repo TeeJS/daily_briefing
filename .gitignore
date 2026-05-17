@@ -1,0 +1,37 @@
+# Secrets — never commit
+secrets/
+*.env
+.env
+.env.*
+!.env.example
+google_client_secret.json
+google_tokens.json
+
+# Daily archive — generated, lives on Unraid in production
+briefings/
+# Local-dev dry-run output dir.
+preview/
+
+# Logs
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+build/
+dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

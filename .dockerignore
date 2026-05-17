@@ -1,0 +1,28 @@
+.git
+.github
+.venv
+venv
+env
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Never bake state into the image
+secrets/
+briefings/
+logs/
+*.env
+.env*
+
+# Repo-only files not needed at runtime
+.claude/
+.gitignore
+.dockerignore
+README.md
+# Bootstraps only run interactively from a desktop, never inside the container.
+scripts/
