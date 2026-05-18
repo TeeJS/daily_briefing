@@ -142,13 +142,13 @@ SECTIONS: tuple[NewsSection, ...] = (
         # Multi-feed; interleave the two sources chronologically.
         sort_by_date=True,
     ),
-    NewsSection(key="ai", title="AI"),  # stub
     NewsSection(
         key="church",
         title="LDS Church Newsroom",
         # Reverse-discovered: WordPress-style feed. Confirm in production; if 404, swap.
         feeds=("https://newsroom.churchofjesuschrist.org/rss",),
     ),
+    NewsSection(key="ai", title="AI"),  # stub
 )
 
 
