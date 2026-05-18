@@ -62,19 +62,6 @@ SECTIONS: tuple[NewsSection, ...] = (
         ),
     ),
     NewsSection(
-        key="regional",
-        title="Utah / Local",
-        # heraldextra.com and ksl.com don't expose working RSS feeds directly
-        # (heraldextra's WordPress feed templates 404, ksl serves empty bodies).
-        # Both are bridged via the self-hosted html2rss instance on noraid.
-        feeds=(
-            "http://192.168.1.25:8180/feed/heraldextra-com.xml",
-            "http://192.168.1.25:8180/feed/utah-county-breaking-news-local-stories-ksl.xml",
-        ),
-        max_items=10,
-        max_age_days=7,
-    ),
-    NewsSection(
         key="nwpx",
         title="NWPX Infrastructure",
         # Two feeds: the investor site (real press releases — earnings,
@@ -96,6 +83,23 @@ SECTIONS: tuple[NewsSection, ...] = (
         max_age_days=15,
     ),
     NewsSection(key="erp", title="ERP / Precast Software"),  # stub
+    # The template splits SECTIONS in half across two columns: indices 0-3 go
+    # left, 4-6 go right. Placing `regional` at index 4 puts the heavy local
+    # feed (10 items) at the top of the right column to balance the visual
+    # weight of the long left side.
+    NewsSection(
+        key="regional",
+        title="Utah / Local",
+        # heraldextra.com and ksl.com don't expose working RSS feeds directly
+        # (heraldextra's WordPress feed templates 404, ksl serves empty bodies).
+        # Both are bridged via the self-hosted html2rss instance on noraid.
+        feeds=(
+            "http://192.168.1.25:8180/feed/heraldextra-com.xml",
+            "http://192.168.1.25:8180/feed/utah-county-breaking-news-local-stories-ksl.xml",
+        ),
+        max_items=10,
+        max_age_days=7,
+    ),
     NewsSection(key="ai", title="AI"),  # stub
     NewsSection(
         key="church",
