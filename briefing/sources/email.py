@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from typing import Any
 
 from googleapiclient.discovery import build
 
-from briefing.config import PROMPTS_DIR
+from briefing.config import PROMPTS_DIR, TIMEZONE
 from briefing.llm import chat_json
 from briefing.secrets import load_google_credentials
 from briefing.sources import SectionResult
@@ -182,7 +183,16 @@ def _search(service, query: str, max_results: int) -> list[dict[str, Any]]:
 
 
 def _format_for_llm(candidates: list[dict[str, Any]]) -> str:
-    """Format the candidate list as compact JSON for the LLM prompt."""
+    """Format the candidate list as compact JSON for the LLM prompt.
+
+    Prepends today's date in the user's timezone so the LLM can reason about
+    "today", "in the near future", and "events that occurred before today"
+    without having to guess what the current date is.
+    """
+    now = datetime.now(TIMEZONE)
+    today_str = now.strftime("%A, %B %d, %Y").replace(" 0", " ")
+    time_str = now.strftime("%I:%M %p %Z").lstrip("0").lower()
+
     compact = [
         {
             "id": c["id"],
@@ -192,7 +202,10 @@ def _format_for_llm(candidates: list[dict[str, Any]]) -> str:
         }
         for c in candidates
     ]
-    return "Candidate threads to triage:\n\n" + json.dumps(compact, indent=2)
+    return (
+        f"Today is {today_str}. Current time: {time_str}.\n\n"
+        "Candidate threads to triage:\n\n" + json.dumps(compact, indent=2)
+    )
 
 
 def _simple_fallback(c: dict[str, Any]) -> dict[str, Any]:
