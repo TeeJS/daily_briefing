@@ -105,8 +105,10 @@
       {% for item in items %}
       <tr>
         <td style="padding:4px 0;vertical-align:top;">
-          <div style="color:{{ sender_color }};font-size:12px;">{{ item.sender }}</div>
-          <div style="color:{{ summary_color }};">{{ item.summary }}</div>
+          <a href="{{ item.link }}" style="display:block;text-decoration:none;">
+            <div style="color:{{ sender_color }};font-size:12px;">{{ item.sender }}</div>
+            <div style="color:{{ summary_color }};">{{ item.summary }}</div>
+          </a>
         </td>
       </tr>
       {% endfor %}

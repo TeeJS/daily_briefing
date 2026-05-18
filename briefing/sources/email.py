@@ -1,9 +1,9 @@
-"""Important emails — broad Gmail pre-filter + LLM triage.
+"""Important emails — narrow Gmail pre-filter + LLM triage.
 
-Pipeline (per project_briefing_email_filter memory):
-1. Two Gmail searches: broad candidate set + starred override.
-2. Dedupe by thread id.
-3. LLM triage into "Action today" and "FYI" buckets, with duplicate-notification collapsing.
+Pipeline (per project_briefing_email_filter memory, revised 2026-05-17):
+1. One Gmail search: unread Primary-tab threads from the last 7 days.
+2. LLM triage into "Action today" and "FYI" buckets, with duplicate-notification collapsing.
+3. Each item carries a `link` to the underlying Gmail thread so the briefing reader can act.
 """
 
 from __future__ import annotations
@@ -20,14 +20,22 @@ from briefing.sources import SectionResult
 
 log = logging.getLogger(__name__)
 
-# Broad pre-filter — see memory: `-category:updates` filters out the actual signal
-# (flight check-ins, claims, payment reminders), so we don't add it here.
-CANDIDATE_QUERY = "in:inbox newer_than:24h -category:promotions -category:social -category:forums"
-STARRED_QUERY = "in:inbox newer_than:24h is:starred"
+# Tight pre-filter: only the Primary tab, only unread, only the last 7 days. This is
+# narrow on purpose — promotional/social/forums/updates are explicitly excluded by the
+# `category:primary` qualifier. (An earlier design used a broader 24h candidate set with
+# a starred override; the user wanted simplicity instead.)
+CANDIDATE_QUERY = "in:inbox category:primary is:unread newer_than:7d"
 
 MAX_CANDIDATES = 30
 TRIAGE_MAX_ACTION = 7
 TRIAGE_MAX_FYI = 7
+
+# Gmail's web URL for opening a thread. Works with the API-returned thread IDs.
+GMAIL_THREAD_URL = "https://mail.google.com/mail/u/0/#inbox/{thread_id}"
+
+
+def _thread_link(thread_id: str) -> str:
+    return GMAIL_THREAD_URL.format(thread_id=thread_id)
 
 TRIAGE_SYSTEM = """You are triaging emails for a daily morning briefing.
 
@@ -65,7 +73,7 @@ def fetch() -> SectionResult:
     service = build("gmail", "v1", credentials=creds, cache_discovery=False)
 
     candidates = _gather_candidates(service)
-    log.info("gmail: %d candidate threads (after dedupe)", len(candidates))
+    log.info("gmail: %d candidate threads", len(candidates))
 
     if not candidates:
         return {"status": "ready", "action_today": [], "fyi": []}
@@ -83,24 +91,23 @@ def fetch() -> SectionResult:
             "fyi": [_simple_fallback(c) for c in candidates[:5]],
         }
 
-    action = (result.get("action_today") or [])[:TRIAGE_MAX_ACTION]
-    fyi = (result.get("fyi") or [])[:TRIAGE_MAX_FYI]
+    action = _attach_links((result.get("action_today") or [])[:TRIAGE_MAX_ACTION])
+    fyi = _attach_links((result.get("fyi") or [])[:TRIAGE_MAX_FYI])
 
     return {"status": "ready", "action_today": action, "fyi": fyi}
 
 
 def _gather_candidates(service) -> list[dict[str, Any]]:
-    """Run both Gmail searches, dedupe by thread id, cap at MAX_CANDIDATES."""
-    threads = _search(service, CANDIDATE_QUERY, max_results=MAX_CANDIDATES)
-    starred = _search(service, STARRED_QUERY, max_results=10)
+    """Run the single Gmail search and cap at MAX_CANDIDATES."""
+    return _search(service, CANDIDATE_QUERY, max_results=MAX_CANDIDATES)[:MAX_CANDIDATES]
 
-    seen: dict[str, dict] = {}
-    for batch in (threads, starred):
-        for t in batch:
-            tid = t["id"]
-            if tid not in seen:
-                seen[tid] = t
-    return list(seen.values())[:MAX_CANDIDATES]
+
+def _attach_links(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Add a `link` field to each item using its first thread_id."""
+    for item in items:
+        tids = item.get("thread_ids") or []
+        item["link"] = _thread_link(tids[0]) if tids else "https://mail.google.com/mail/u/0/#inbox"
+    return items
 
 
 def _search(service, query: str, max_results: int) -> list[dict[str, Any]]:
@@ -159,4 +166,5 @@ def _simple_fallback(c: dict[str, Any]) -> dict[str, Any]:
         "sender": c["sender"],
         "summary": c["subject"],
         "thread_ids": [c["id"]],
+        "link": _thread_link(c["id"]),
     }
