@@ -103,11 +103,11 @@
   {%- macro email_block(email) %}
     {{ section_header("📧", "Unread / Important Emails") }}
     {% if email.status == "ready" %}
-      {% if not email.items %}
+      {% if not email.messages %}
         <div style="padding:8px 0;color:#666;font-size:14px;">Inbox zero — nothing unread in Primary (7d) and nothing starred/important (30d).</div>
       {% else %}
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:13px;">
-          {% for item in email.items %}
+          {% for item in email.messages %}
           <tr>
             <td style="padding:4px 0;vertical-align:top;">
               <a href="{{ item.link }}" style="display:block;text-decoration:none;">
