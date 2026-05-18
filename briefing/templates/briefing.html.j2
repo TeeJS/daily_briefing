@@ -100,39 +100,26 @@
     {% endif %}
   {%- endmacro %}
 
-  {%- macro email_list(items, sender_color, summary_color) %}
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:13px;">
-      {% for item in items %}
-      <tr>
-        <td style="padding:4px 0;vertical-align:top;">
-          <a href="{{ item.link }}" style="display:block;text-decoration:none;">
-            <div style="color:{{ sender_color }};font-size:12px;">{{ item.sender }}</div>
-            <div style="color:{{ summary_color }};">{{ item.summary }}</div>
-          </a>
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
-  {%- endmacro %}
-
   {%- macro email_block(email) %}
-    {{ section_header("📧", "Important Emails") }}
+    {{ section_header("📧", "Unread / Important Emails") }}
     {% if email.status == "ready" %}
-      {% if email.triage_failed %}
-        <div style="padding:6px 10px;margin-bottom:8px;background-color:#fff8e0;border:1px solid #e0c060;border-radius:4px;font-size:12px;color:#665020;">
-          Triage LLM failed — showing unranked fallback. ({{ email.triage_error }})
-        </div>
-      {% endif %}
-      {% if not email.action_today and not email.fyi %}
-        <div style="padding:8px 0;color:#666;font-size:14px;">Nothing notable in the last 24 hours.</div>
-      {% endif %}
-      {% if email.action_today %}
-        <h3 style="margin:8px 0 4px;font-size:12px;font-weight:600;color:#b00;text-transform:uppercase;letter-spacing:0.05em;">Action today</h3>
-        {{ email_list(email.action_today, "#666", "#222") }}
-      {% endif %}
-      {% if email.fyi %}
-        <h3 style="margin:12px 0 4px;font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.05em;">FYI</h3>
-        {{ email_list(email.fyi, "#888", "#444") }}
+      {% if not email.items %}
+        <div style="padding:8px 0;color:#666;font-size:14px;">Inbox zero — nothing unread in Primary (7d) and nothing starred/important (30d).</div>
+      {% else %}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:13px;">
+          {% for item in email.items %}
+          <tr>
+            <td style="padding:4px 0;vertical-align:top;">
+              <a href="{{ item.link }}" style="display:block;text-decoration:none;">
+                <div style="color:#888;font-size:12px;">
+                  {{ item.sender }}{% if item.date_str %} <span style="color:#aaa;">· {{ item.date_str }}</span>{% endif %}
+                </div>
+                <div style="color:#222;">{{ item.subject }}</div>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
       {% endif %}
     {% elif email.status == "error" %}
       <div style="padding:8px 0;color:#b00;font-size:13px;">Email fetch failed: {{ email.error }}</div>

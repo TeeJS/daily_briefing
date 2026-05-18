@@ -1,36 +1,37 @@
-"""Important emails — narrow Gmail pre-filter + LLM triage.
+"""Unread / important emails — two Gmail queries, deduped, sorted chronologically.
 
-Pipeline (per project_briefing_email_filter memory, revised 2026-05-17):
-1. One Gmail search: unread Primary-tab threads from the last 7 days.
-2. LLM triage into "Action today" and "FYI" buckets, with duplicate-notification collapsing.
-3. Each item carries a `link` to the underlying Gmail thread so the briefing reader can act.
+No LLM triage, no classification. Pipeline:
+  1. Q1: unread Primary-tab threads from the last 7 days.
+  2. Q2: starred OR important threads (still in inbox = not archived) from the last 30 days.
+  3. Merge by thread_id (Q2 wins on metadata if a thread appears in both).
+  4. Sort by the thread's latest internal date, oldest-first.
+  5. Each item carries a `link` to the Gmail thread.
+
+The previous design used a single narrow query + LLM triage into Action/FYI buckets.
+That was abandoned 2026-05-17 because the local LLM (glm-4.7-flash) was unreliable
+at the categorization. See project_briefing_email_filter memory for history.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
 from typing import Any
 
 from googleapiclient.discovery import build
 
-from briefing.config import PROMPTS_DIR, TIMEZONE
-from briefing.llm import chat_json
+from briefing.config import TIMEZONE
 from briefing.secrets import load_google_credentials
 from briefing.sources import SectionResult
 
 log = logging.getLogger(__name__)
 
-# Tight pre-filter: only the Primary tab, only unread, only the last 7 days. This is
-# narrow on purpose — promotional/social/forums/updates are explicitly excluded by the
-# `category:primary` qualifier. (An earlier design used a broader 24h candidate set with
-# a starred override; the user wanted simplicity instead.)
-CANDIDATE_QUERY = "in:inbox category:primary is:unread newer_than:7d"
+# Two queries — each result deduped by thread id, then merged into a single list.
+UNREAD_PRIMARY_QUERY = "in:inbox category:primary is:unread newer_than:7d"
+STARRED_OR_IMPORTANT_QUERY = "in:inbox (is:starred OR is:important) newer_than:30d"
 
-MAX_CANDIDATES = 30
-TRIAGE_MAX_ACTION = 7
-TRIAGE_MAX_FYI = 7
+# Per-query cap (the result count after dedupe is typically much smaller).
+MAX_PER_QUERY = 50
 
 # Gmail's web URL for opening a thread. Works with the API-returned thread IDs.
 GMAIL_THREAD_URL = "https://mail.google.com/mail/u/0/#inbox/{thread_id}"
@@ -40,114 +41,75 @@ def _thread_link(thread_id: str) -> str:
     return GMAIL_THREAD_URL.format(thread_id=thread_id)
 
 
-# Prompt for the LLM triage. The default below is embedded so the container always works,
-# but if /app/prompts/email_triage.txt exists at runtime (volume-mounted from the host),
-# the file's contents override the default. This lets the user iterate on the prompt
-# without rebuilding the image: edit the file, re-run `docker run`, see new behavior.
-TRIAGE_PROMPT_FILE = PROMPTS_DIR / "email_triage.txt"
-
-DEFAULT_TRIAGE_SYSTEM = """Please act as a personal assistant triaging emails for a daily morning briefing.
-
-Pick threads from the candidate list and place them in one of two buckets:
-
-- "action_today": time-sensitive things occuring, due or expiring today or in the near future
-- "fyi": informational but worth knowing.
-
-Drop entirely:
-- Receipts for completed purchases unless they reflect something the user needs to act on.  Upcoming/pending/failed purchases should be included.
-- Saved-search digests from real estate, jobs, etc.
-- Things that happened in the past (ie: invitations, events, lessons, reservations, etc.) that occured before today
-- Weekly WPForms Summary
-- Messages that are obviously SPAM
-
-Return ONLY valid JSON in this exact shape:
-{
-  "action_today": [
-    {"sender": "<display name or domain>", "summary": "<one short sentence>", "thread_ids": ["<id>", ...]}
-  ],
-  "fyi": [
-    {"sender": "<display name or domain>", "summary": "<one short sentence>", "thread_ids": ["<id>", ...]}
-  ]
-}
-
-The thread_ids array must include every candidate thread id you're representing. Always include at least one id per entry."""
-
-
-def _load_triage_system() -> str:
-    """Return the email-triage system prompt.
-
-    Reads /app/prompts/email_triage.txt if present (so the user can edit the prompt
-    on noraid without a container rebuild). Falls back to DEFAULT_TRIAGE_SYSTEM if
-    the file is missing or unreadable.
-    """
-    if TRIAGE_PROMPT_FILE.exists():
-        try:
-            text = TRIAGE_PROMPT_FILE.read_text(encoding="utf-8")
-            log.info("email triage prompt: using override from %s (%d chars)",
-                     TRIAGE_PROMPT_FILE, len(text))
-            return text
-        except Exception as exc:
-            log.warning("email triage prompt: failed to read %s (%s); using embedded default",
-                        TRIAGE_PROMPT_FILE, exc)
-    else:
-        log.info("email triage prompt: %s not found; using embedded default",
-                 TRIAGE_PROMPT_FILE)
-    return DEFAULT_TRIAGE_SYSTEM
-
-
 def fetch() -> SectionResult:
     creds = load_google_credentials()
     service = build("gmail", "v1", credentials=creds, cache_discovery=False)
 
-    candidates = _gather_candidates(service)
-    log.info("gmail: %d candidate threads (query=%r)", len(candidates), CANDIDATE_QUERY)
-    # Trace-log each candidate so we can see exactly what the LLM was asked to triage.
-    for c in candidates:
-        log.info(
-            "  candidate id=%s sender=%r subject=%r",
-            c.get("id"),
-            (c.get("sender") or "")[:80],
-            (c.get("subject") or "")[:120],
-        )
+    threads_a = _search(service, UNREAD_PRIMARY_QUERY, max_results=MAX_PER_QUERY)
+    threads_b = _search(service, STARRED_OR_IMPORTANT_QUERY, max_results=MAX_PER_QUERY)
+    log.info(
+        "gmail: %d threads from unread-primary-7d, %d from starred-or-important-30d",
+        len(threads_a),
+        len(threads_b),
+    )
 
-    if not candidates:
-        return {"status": "ready", "action_today": [], "fyi": []}
+    # Dedupe by thread id. Iterate B first so A overwrites with its (typically newer) data.
+    by_id: dict[str, dict[str, Any]] = {}
+    for t in threads_b + threads_a:
+        by_id[t["id"]] = t
 
-    triage_input = _format_for_llm(candidates)
-    triage_system = _load_triage_system()
+    # Sort by latest internal date, oldest first.
+    items = sorted(by_id.values(), key=lambda t: t.get("date_ms") or 0)
+
+    rendered = [_render_item(t) for t in items]
+    log.info("gmail: %d total unique items (after dedupe)", len(rendered))
+    return {"status": "ready", "items": rendered}
+
+
+def _render_item(t: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sender": _short_sender(t.get("sender") or "(unknown)"),
+        "subject": t.get("subject") or "(no subject)",
+        "date_str": _fmt_date(t.get("date_ms")),
+        "link": _thread_link(t["id"]),
+    }
+
+
+def _short_sender(raw: str) -> str:
+    """Trim a "Name <addr@host>" header to just the name (or the address if no name)."""
+    if "<" in raw:
+        # "Name <addr@host>" -> "Name"
+        name, _, _rest = raw.partition("<")
+        name = name.strip().strip('"')
+        if name:
+            return name
+        # Bare "<addr@host>" -> "addr@host"
+        addr = _rest.rstrip(">").strip()
+        return addr or raw
+    return raw.strip()
+
+
+def _fmt_date(date_ms: int | None) -> str:
+    """Format the thread's latest internalDate as a short relative-ish label."""
+    if not date_ms:
+        return ""
     try:
-        result = chat_json(triage_system, triage_input)
-    except Exception as exc:
-        log.exception("LLM triage failed; falling back to top-5-as-FYI")
-        return {
-            "status": "ready",
-            "triage_failed": True,
-            "triage_error": str(exc),
-            "action_today": [],
-            "fyi": [_simple_fallback(c) for c in candidates[:5]],
-        }
-
-    action = _attach_links((result.get("action_today") or [])[:TRIAGE_MAX_ACTION])
-    fyi = _attach_links((result.get("fyi") or [])[:TRIAGE_MAX_FYI])
-
-    return {"status": "ready", "action_today": action, "fyi": fyi}
-
-
-def _gather_candidates(service) -> list[dict[str, Any]]:
-    """Run the single Gmail search and cap at MAX_CANDIDATES."""
-    return _search(service, CANDIDATE_QUERY, max_results=MAX_CANDIDATES)[:MAX_CANDIDATES]
-
-
-def _attach_links(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Add a `link` field to each item using its first thread_id."""
-    for item in items:
-        tids = item.get("thread_ids") or []
-        item["link"] = _thread_link(tids[0]) if tids else "https://mail.google.com/mail/u/0/#inbox"
-    return items
+        dt = datetime.fromtimestamp(date_ms / 1000, tz=TIMEZONE)
+    except (ValueError, OSError):
+        return ""
+    today = datetime.now(TIMEZONE).date()
+    days_ago = (today - dt.date()).days
+    if days_ago == 0:
+        return "today " + dt.strftime("%I:%M %p").lstrip("0").lower()
+    if days_ago == 1:
+        return "yesterday"
+    if days_ago < 7:
+        return dt.strftime("%a")  # Mon, Tue, ...
+    return dt.strftime("%b %d").replace(" 0", " ")  # May 13
 
 
 def _search(service, query: str, max_results: int) -> list[dict[str, Any]]:
-    """Return a list of {id, sender, subject, snippet} for matching threads."""
+    """Return a list of {id, sender, subject, date_ms} for matching threads."""
     resp = (
         service.users()
         .threads()
@@ -158,61 +120,35 @@ def _search(service, query: str, max_results: int) -> list[dict[str, Any]]:
 
     out: list[dict[str, Any]] = []
     for t in thread_summaries:
-        # The list endpoint returns thread metadata but not the per-message headers
-        # we need; fetch the first message.
+        # Fetch the latest message in the thread for headers + internalDate.
         detail = (
             service.users()
             .threads()
-            .get(userId="me", id=t["id"], format="metadata", metadataHeaders=["From", "Subject"])
+            .get(
+                userId="me",
+                id=t["id"],
+                format="metadata",
+                metadataHeaders=["From", "Subject", "Date"],
+            )
             .execute()
         )
         messages = detail.get("messages", [])
         if not messages:
             continue
-        first = messages[0]
-        headers = {h["name"]: h["value"] for h in first.get("payload", {}).get("headers", [])}
+        # Use the most recent message in the thread for sender/subject/date.
+        latest = messages[-1]
+        headers = {h["name"]: h["value"] for h in latest.get("payload", {}).get("headers", [])}
+        date_ms_raw = latest.get("internalDate")
+        try:
+            date_ms = int(date_ms_raw) if date_ms_raw is not None else None
+        except (TypeError, ValueError):
+            date_ms = None
         out.append(
             {
                 "id": t["id"],
                 "sender": headers.get("From", "(unknown)"),
                 "subject": headers.get("Subject", "(no subject)"),
-                "snippet": first.get("snippet", ""),
+                "date_ms": date_ms,
             }
         )
     return out
-
-
-def _format_for_llm(candidates: list[dict[str, Any]]) -> str:
-    """Format the candidate list as compact JSON for the LLM prompt.
-
-    Prepends today's date in the user's timezone so the LLM can reason about
-    "today", "in the near future", and "events that occurred before today"
-    without having to guess what the current date is.
-    """
-    now = datetime.now(TIMEZONE)
-    today_str = now.strftime("%A, %B %d, %Y").replace(" 0", " ")
-    time_str = now.strftime("%I:%M %p %Z").lstrip("0").lower()
-
-    compact = [
-        {
-            "id": c["id"],
-            "sender": c["sender"],
-            "subject": c["subject"],
-            "snippet": c["snippet"][:300],
-        }
-        for c in candidates
-    ]
-    return (
-        f"Today is {today_str}. Current time: {time_str}.\n\n"
-        "Candidate threads to triage:\n\n" + json.dumps(compact, indent=2)
-    )
-
-
-def _simple_fallback(c: dict[str, Any]) -> dict[str, Any]:
-    """Used if LLM triage fails entirely — just show raw sender/subject."""
-    return {
-        "sender": c["sender"],
-        "summary": c["subject"],
-        "thread_ids": [c["id"]],
-        "link": _thread_link(c["id"]),
-    }
