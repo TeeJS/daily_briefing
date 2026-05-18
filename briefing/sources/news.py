@@ -90,8 +90,10 @@ SECTIONS: tuple[NewsSection, ...] = (
             "https://investor.nwpx.com/press-releases?pagetemplate=rss",
             "https://nwpx.com/feed/",
         ),
-        max_items=5,
-        max_age_days=14,
+        # Light feed (monthly-ish cadence), so widen the window and uncap items —
+        # whatever shows up in the last 30 days, show it all.
+        max_items=30,
+        max_age_days=30,
     ),
     NewsSection(key="erp", title="ERP / Precast Software"),  # stub
     NewsSection(key="ai", title="AI"),  # stub
