@@ -221,20 +221,20 @@
     <div style="margin-top:4px;font-size:14px;color:#666;">{{ date_long }}</div>
   </div>
 
-  <!-- ===== Row 1: Calendar | Claude Usage ===== -->
+  <!-- ===== Row 1: Calendar | Unread/Important Emails (the two long sections) ===== -->
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-bottom:24px;">
     <tr>
       <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-right:10px;">{{ cal_block(calendar) }}</td>
-      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-left:10px;">{{ claude_block(claude_usage) }}</td>
+      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-left:10px;">{{ email_block(email) }}</td>
     </tr>
   </table>
 
-  <!-- ===== Row 2: Important Emails | Etsy Orders ===== -->
+  <!-- ===== Row 2: Claude Usage | Etsy Orders (the two short sections) ===== -->
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-bottom:24px;">
     <tr>
-      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-right:10px;">{{ email_block(email) }}</td>
+      <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-right:10px;">{{ claude_block(claude_usage) }}</td>
       <td valign="top" width="50%" style="width:50%;vertical-align:top;padding-left:10px;">{{ etsy_block(etsy) }}</td>
     </tr>
   </table>
