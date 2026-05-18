@@ -78,8 +78,9 @@ Both scopes are read-only. The briefing job has no send/modify authority on the 
 
 ### 2. Unraid
 
-- Create the directory tree `/mnt/user/appdata/daily_briefing/{secrets,briefings,logs}`.
+- Create the directory tree `/mnt/user/appdata/daily_briefing/{secrets,briefings,logs,prompts}`.
 - Place `google_client_secret.json` and `google_tokens.json` (from the bootstrap step above) in `secrets/`.
+- Optionally place a custom email-triage prompt at `prompts/email_triage.txt` to override the embedded default. The container reads it at the start of every run, so edits take effect on the next `docker run` (no rebuild). Omit the file to use the built-in prompt.
 - Install the **User Scripts** plugin from Community Apps.
 - Add a new script with cron schedule `0 6 * * *` and this body:
   ```bash
@@ -90,6 +91,7 @@ Both scopes are read-only. The briefing job has no send/modify authority on the 
     -v /mnt/user/appdata/daily_briefing/secrets:/app/secrets \
     -v /mnt/user/appdata/daily_briefing/briefings:/app/briefings \
     -v /mnt/user/appdata/daily_briefing/logs:/app/logs \
+    -v /mnt/user/appdata/daily_briefing/prompts:/app/prompts \
     -e LLM_BASE_URL=http://lite.schmitzplex.com:4000/v1 \
     -e LLM_MODEL=<your-litellm-model-name> \
     -e TZ=America/Denver \

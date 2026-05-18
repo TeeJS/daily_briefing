@@ -35,9 +35,11 @@ If the package ever needs to go private again, the alternative is a PAT with `re
 ### Step 2 — Create the appdata tree on noraid
 
 ```bash
-mkdir -p /mnt/user/appdata/daily_briefing/{secrets,briefings,logs}
+mkdir -p /mnt/user/appdata/daily_briefing/{secrets,briefings,logs,prompts}
 chmod 700 /mnt/user/appdata/daily_briefing/secrets
 ```
+
+The `prompts/` directory is optional but recommended — drop tunable prompt files (currently just `email_triage.txt`) here and the container will read them at runtime, no rebuild needed.
 
 ### Step 3 — Bootstrap the three OAuth integrations
 
@@ -109,6 +111,7 @@ docker run --rm \
   -v /mnt/user/appdata/daily_briefing/secrets:/app/secrets \
   -v /mnt/user/appdata/daily_briefing/briefings:/app/briefings \
   -v /mnt/user/appdata/daily_briefing/logs:/app/logs \
+  -v /mnt/user/appdata/daily_briefing/prompts:/app/prompts \
   -e LLM_BASE_URL=http://lite.schmitzplex.com:4000/v1 \
   -e LLM_MODEL=<your-litellm-model-name> \
   -e TZ=America/Denver \

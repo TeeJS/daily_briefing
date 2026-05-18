@@ -17,6 +17,7 @@ load_dotenv()
 SECRETS_DIR = Path(os.environ.get("BRIEFING_SECRETS_DIR", "/app/secrets"))
 BRIEFINGS_DIR = Path(os.environ.get("BRIEFING_ARCHIVE_DIR", "/app/briefings"))
 LOGS_DIR = Path(os.environ.get("BRIEFING_LOGS_DIR", "/app/logs"))
+PROMPTS_DIR = Path(os.environ.get("BRIEFING_PROMPTS_DIR", "/app/prompts"))
 
 # User-facing settings
 TIMEZONE = ZoneInfo(os.environ.get("TZ", "America/Denver"))

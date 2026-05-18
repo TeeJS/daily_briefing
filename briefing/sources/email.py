@@ -14,6 +14,7 @@ from typing import Any
 
 from googleapiclient.discovery import build
 
+from briefing.config import PROMPTS_DIR
 from briefing.llm import chat_json
 from briefing.secrets import load_google_credentials
 from briefing.sources import SectionResult
@@ -37,18 +38,26 @@ GMAIL_THREAD_URL = "https://mail.google.com/mail/u/0/#inbox/{thread_id}"
 def _thread_link(thread_id: str) -> str:
     return GMAIL_THREAD_URL.format(thread_id=thread_id)
 
-TRIAGE_SYSTEM = """Please act as a personal assistant triaging emails for a daily morning briefing.
+
+# Prompt for the LLM triage. The default below is embedded so the container always works,
+# but if /app/prompts/email_triage.txt exists at runtime (volume-mounted from the host),
+# the file's contents override the default. This lets the user iterate on the prompt
+# without rebuilding the image: edit the file, re-run `docker run`, see new behavior.
+TRIAGE_PROMPT_FILE = PROMPTS_DIR / "email_triage.txt"
+
+DEFAULT_TRIAGE_SYSTEM = """Please act as a personal assistant triaging emails for a daily morning briefing.
 
 Pick threads from the candidate list and place them in one of two buckets:
 
-- "action_today": time-sensitive things due or expiring today or in the near future
+- "action_today": time-sensitive things occuring, due or expiring today or in the near future
 - "fyi": informational but worth knowing.
 
 Drop entirely:
-- Receipts for purchases unless they reflect something the user needs to act on
+- Receipts for completed purchases unless they reflect something the user needs to act on.  Upcoming/pending/failed purchases should be included.
 - Saved-search digests from real estate, jobs, etc.
 - Things that happened in the past (ie: invitations, events, lessons, reservations, etc.) that occured before today
 - Weekly WPForms Summary
+- Messages that are obviously SPAM
 
 Return ONLY valid JSON in this exact shape:
 {
@@ -61,6 +70,28 @@ Return ONLY valid JSON in this exact shape:
 }
 
 The thread_ids array must include every candidate thread id you're representing. Always include at least one id per entry."""
+
+
+def _load_triage_system() -> str:
+    """Return the email-triage system prompt.
+
+    Reads /app/prompts/email_triage.txt if present (so the user can edit the prompt
+    on noraid without a container rebuild). Falls back to DEFAULT_TRIAGE_SYSTEM if
+    the file is missing or unreadable.
+    """
+    if TRIAGE_PROMPT_FILE.exists():
+        try:
+            text = TRIAGE_PROMPT_FILE.read_text(encoding="utf-8")
+            log.info("email triage prompt: using override from %s (%d chars)",
+                     TRIAGE_PROMPT_FILE, len(text))
+            return text
+        except Exception as exc:
+            log.warning("email triage prompt: failed to read %s (%s); using embedded default",
+                        TRIAGE_PROMPT_FILE, exc)
+    else:
+        log.info("email triage prompt: %s not found; using embedded default",
+                 TRIAGE_PROMPT_FILE)
+    return DEFAULT_TRIAGE_SYSTEM
 
 
 def fetch() -> SectionResult:
@@ -82,8 +113,9 @@ def fetch() -> SectionResult:
         return {"status": "ready", "action_today": [], "fyi": []}
 
     triage_input = _format_for_llm(candidates)
+    triage_system = _load_triage_system()
     try:
-        result = chat_json(TRIAGE_SYSTEM, triage_input)
+        result = chat_json(triage_system, triage_input)
     except Exception as exc:
         log.exception("LLM triage failed; falling back to top-5-as-FYI")
         return {
