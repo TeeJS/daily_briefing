@@ -74,7 +74,25 @@ SECTIONS: tuple[NewsSection, ...] = (
         max_items=10,
         max_age_days=7,
     ),
-    NewsSection(key="nwpx", title="NWPX Infrastructure"),  # stub
+    NewsSection(
+        key="nwpx",
+        title="NWPX Infrastructure",
+        # Two feeds: the investor site (real press releases — earnings,
+        # acquisitions, material events) and the marketing site (employee
+        # spotlights, awards, blog posts). The nwpx.com/newsroom/ page is a
+        # landing page that links out to investor.nwpx.com; only the latter
+        # carries actual news. Combined, deduped by URL.
+        # Verified 2026-05-18: investor.nwpx.com uses an HTML landing page at
+        # /press-releases — the RSS variant requires the ?pagetemplate=rss
+        # query string (discovered via the site's own RSS landing page at
+        # /index.php?s=95&rsspage=43).
+        feeds=(
+            "https://investor.nwpx.com/press-releases?pagetemplate=rss",
+            "https://nwpx.com/feed/",
+        ),
+        max_items=5,
+        max_age_days=14,
+    ),
     NewsSection(key="erp", title="ERP / Precast Software"),  # stub
     NewsSection(key="ai", title="AI"),  # stub
     NewsSection(
