@@ -53,6 +53,9 @@ def chat_json(
         ],
     )
     content = resp.choices[0].message.content or "{}"
+    # Trace-log the full raw response so we can audit triage decisions after the fact.
+    # Truncated at 4 KB in case the model goes pathological.
+    log.info("LLM raw response (model=%s, %d chars): %s", model, len(content), content[:4000])
     try:
         return json.loads(_strip_code_fences(content))
     except json.JSONDecodeError as exc:

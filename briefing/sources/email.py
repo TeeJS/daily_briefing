@@ -73,7 +73,15 @@ def fetch() -> SectionResult:
     service = build("gmail", "v1", credentials=creds, cache_discovery=False)
 
     candidates = _gather_candidates(service)
-    log.info("gmail: %d candidate threads", len(candidates))
+    log.info("gmail: %d candidate threads (query=%r)", len(candidates), CANDIDATE_QUERY)
+    # Trace-log each candidate so we can see exactly what the LLM was asked to triage.
+    for c in candidates:
+        log.info(
+            "  candidate id=%s sender=%r subject=%r",
+            c.get("id"),
+            (c.get("sender") or "")[:80],
+            (c.get("subject") or "")[:120],
+        )
 
     if not candidates:
         return {"status": "ready", "action_today": [], "fyi": []}
