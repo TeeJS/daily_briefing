@@ -86,7 +86,7 @@ Env vars at runtime: `LLM_BASE_URL`, `LLM_MODEL`, `TZ` (defaults `America/Denver
 ## Memory files (deeper context)
 
 Architectural decisions and trade-offs are documented in this user's local memory:
-`C:\Users\teejs\.claude\projects\C--Users-teejs-Documents-github-daily-briefing\memory\`
+`C:\Users\tschmitz\.claude\projects\D--Github-daily-briefing\memory\`
 
 Entries cover: calendar inclusion list, email filter design, Claude usage API reverse-engineering, Etsy approach (API v3 direct, not third-party MCPs), news subsection sources, delivery channel choice, deployment topology.
 

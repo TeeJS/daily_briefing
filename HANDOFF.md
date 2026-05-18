@@ -40,14 +40,18 @@ chmod 700 /mnt/user/appdata/daily_briefing/secrets
 
 ### Step 3 — Bootstrap the three OAuth integrations
 
-Run these from a desktop with a browser. The Windows worktree on the user's laptop already has the venv set up.
+Run these from a desktop with a browser. On this machine the repo lives at `D:\Github\daily_briefing`. First-time venv setup:
 
 ```powershell
-cd C:\Users\teejs\Documents\github\daily_briefing\.claude\worktrees\peaceful-panini-4b5228
+cd D:\Github\daily_briefing
+python -m venv .venv
 .venv\Scripts\activate
+pip install -e .
 $env:BRIEFING_SECRETS_DIR = ".\local_secrets"
 mkdir local_secrets -ErrorAction SilentlyContinue
 ```
+
+(On subsequent runs, skip the `python -m venv` and `pip install -e .` lines — just `cd`, `activate`, set env vars.)
 
 **3a. Google (Gmail send + Calendar read)**
 1. https://console.cloud.google.com/ — create or reuse a project
@@ -182,4 +186,4 @@ In rough priority order:
 - **Delivery**: HTML email via Gmail API, sent from teejschmitz@gmail.com to itself
 - **Archive**: `briefings/YYYY/MM/DD.html` — future source for `briefing.schmitzplex.com`
 
-For architecture context not in CLAUDE.md, see the memory files at `~/.claude/projects/C--Users-teejs-Documents-github-daily-briefing/memory/` (local to TJ's Windows laptop).
+For architecture context not in CLAUDE.md, see the memory files at `C:\Users\tschmitz\.claude\projects\D--Github-daily-briefing\memory\` (local to this Windows desktop).

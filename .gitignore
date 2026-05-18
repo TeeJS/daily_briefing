@@ -16,6 +16,13 @@ preview/
 logs/
 *.log
 
+# Local backups (timestamped snapshots taken before in-place edits)
+.backups/
+
+# Claude Code session state — machine-local, not for the repo
+# (Memories live under ~/.claude/projects/, not here.)
+.claude/
+
 # Python
 __pycache__/
 *.py[cod]
