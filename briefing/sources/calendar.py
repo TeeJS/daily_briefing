@@ -61,6 +61,10 @@ def _normalize(item: dict, calendar_label: str) -> dict:
     start = item.get("start", {})
     end = item.get("end", {})
 
+    # Google returns `htmlLink` on every event — the canonical web URL for opening
+    # this event in Google Calendar.
+    link = item.get("htmlLink", "")
+
     if "date" in start:
         # All-day event. `end.date` is exclusive in Google's API.
         return {
@@ -70,6 +74,7 @@ def _normalize(item: dict, calendar_label: str) -> dict:
             "summary": item.get("summary", "(no title)"),
             "location": item.get("location"),
             "calendar": calendar_label,
+            "link": link,
         }
 
     start_dt = datetime.fromisoformat(start["dateTime"]).astimezone(TIMEZONE)
@@ -89,6 +94,7 @@ def _normalize(item: dict, calendar_label: str) -> dict:
         "summary": item.get("summary", "(no title)"),
         "location": item.get("location"),
         "calendar": calendar_label,
+        "link": link,
         "_start_dt": start_dt,
     }
 
