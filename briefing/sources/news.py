@@ -38,6 +38,12 @@ class NewsSection:
                       "TradingKey"). Useful for filtering out stock-pump farms
                       and off-topic outlets that Google News surfaces because
                       the section keyword appears in arena/team names etc.
+    sort_by_date      if True, merge all feeds and sort newest-first by
+                      pubDate. If False (default), preserve the feed's own
+                      order — useful for Google News feeds where the feed is
+                      already in relevance order and our chronological re-sort
+                      would push curated picks down in favor of high-frequency
+                      low-quality auto-published items.
     """
 
     key: str
@@ -46,6 +52,7 @@ class NewsSection:
     max_items: int = DEFAULT_MAX_ITEMS
     max_age_days: int | None = None
     blocked_sources: tuple[str, ...] = field(default_factory=tuple)
+    sort_by_date: bool = False
 
 
 SECTIONS: tuple[NewsSection, ...] = (
@@ -87,6 +94,8 @@ SECTIONS: tuple[NewsSection, ...] = (
         # whatever shows up in the last 15 days, show it all.
         max_items=30,
         max_age_days=15,
+        # Multi-feed; interleave the two sources chronologically.
+        sort_by_date=True,
     ),
     NewsSection(
         key="erp",
@@ -97,6 +106,7 @@ SECTIONS: tuple[NewsSection, ...] = (
         # all RSS-able channels — see project_briefing_news memory. Section
         # renamed to just SAP to reflect what's actually fed.
         feeds=("http://192.168.1.25:8180/feed/google-news-sap.xml",),
+        max_items=10,
         # The Google News SAP search is polluted by two failure modes:
         #   1) Stock-pump farms (GuruFocus, TradingKey, Simply Wall St, etc.)
         #      that auto-publish multiple times a day, swamping the
@@ -129,6 +139,8 @@ SECTIONS: tuple[NewsSection, ...] = (
         ),
         max_items=10,
         max_age_days=7,
+        # Multi-feed; interleave the two sources chronologically.
+        sort_by_date=True,
     ),
     NewsSection(key="ai", title="AI"),  # stub
     NewsSection(
@@ -217,11 +229,12 @@ def _pull_section(section: NewsSection) -> list[dict[str, Any]]:
                 }
             )
 
-    # Newest first. Items without a date sort last via the datetime.min fallback.
-    candidates.sort(
-        key=lambda x: x.get("_dt") or datetime.min.replace(tzinfo=timezone.utc),
-        reverse=True,
-    )
+    if section.sort_by_date:
+        # Newest first. Items without a date sort last via datetime.min fallback.
+        candidates.sort(
+            key=lambda x: x.get("_dt") or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
 
     # Strip the private sort key and cap.
     return [
