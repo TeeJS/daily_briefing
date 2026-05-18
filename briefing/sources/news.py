@@ -28,12 +28,16 @@ SECTIONS: list[tuple[str, str, str | None]] = [
     (
         "world",
         "World",
-        "https://news.google.com/rss?topic=w&hl=en-US&gl=US&ceid=US:en",
+        # Google News deprecated the lowercase short codes (?topic=w / ?topic=n) — both
+        # silently fall back to a generic "Top stories" feed, so they return identical
+        # content. The current way to target a specific topic is the encoded /rss/topics/
+        # URL. Verified 2026-05-17.
+        "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
     ),
     (
         "us",
         "United States",
-        "https://news.google.com/rss?topic=n&hl=en-US&gl=US&ceid=US:en",
+        "https://news.google.com/rss/topics/CAAqIggKIhxDQkFTRHdvSkwyMHZNRGxqTjNjd0VnSmxiaWdBUAE?hl=en-US&gl=US&ceid=US:en",
     ),
     (
         "regional",

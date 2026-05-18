@@ -65,7 +65,12 @@ def _refresh(refresh_token: str) -> dict[str, Any]:
     req = urllib.request.Request(
         ANTHROPIC_TOKEN_URL,
         data=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            # Anthropic's token endpoint 403s the default urllib User-Agent.
+            "User-Agent": "daily_briefing/0.1",
+            "Accept": "application/json",
+        },
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
