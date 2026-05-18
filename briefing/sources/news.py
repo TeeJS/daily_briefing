@@ -1,10 +1,9 @@
 """News digest — 7 subsections.
 
-v1 implementation: pulls RSS feeds and takes top N items per subsection verbatim
-(Google News already ranks well). LLM curation across subsections will come later.
+Each section is a NewsSection with one or more feed URLs. Multi-feed sections
+get dedup'd by URL, optionally time-filtered, sorted newest-first, and capped.
 
-Sections still as sub-stubs:
-- Regional (Utah / Springville) — needs feed discovery
+Sections still as sub-stubs (no feeds yet):
 - NWPX — needs stock API + SEC EDGAR + press release scraping
 - ERP/SAP/Muka/Titan — SAP RSS easy, Muka/Titan needs web search
 - AI — Anthropic news feed discovery + tech news RSS
@@ -13,6 +12,8 @@ Sections still as sub-stubs:
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import feedparser
@@ -21,85 +22,165 @@ from briefing.sources import SectionResult
 
 log = logging.getLogger(__name__)
 
-MAX_ITEMS_PER_SECTION = 4
+DEFAULT_MAX_ITEMS = 4
 
-# Section definitions: (key, title, feed_url) — None feed means the section is still a sub-stub.
-SECTIONS: list[tuple[str, str, str | None]] = [
-    (
-        "world",
-        "World",
-        # Google News deprecated the lowercase short codes (?topic=w / ?topic=n) — both
-        # silently fall back to a generic "Top stories" feed, so they return identical
-        # content. The current way to target a specific topic is the encoded /rss/topics/
-        # URL. Verified 2026-05-17.
-        "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
+
+@dataclass(frozen=True)
+class NewsSection:
+    """One subsection of the news digest.
+
+    feeds         tuple of RSS/Atom URLs. Empty = the section is a stub.
+    max_items     cap after merge+dedup+filter. Defaults to 4.
+    max_age_days  if set, drop entries older than this many days (uses the
+                  entry's published_parsed / updated_parsed). None = no filter.
+    """
+
+    key: str
+    title: str
+    feeds: tuple[str, ...] = field(default_factory=tuple)
+    max_items: int = DEFAULT_MAX_ITEMS
+    max_age_days: int | None = None
+
+
+SECTIONS: tuple[NewsSection, ...] = (
+    NewsSection(
+        key="world",
+        title="World",
+        # Google News deprecated the lowercase short codes (?topic=w / ?topic=n) —
+        # both silently fall back to a generic "Top stories" feed and returned
+        # identical content. /rss/topics/<encoded-id> is the working form.
+        # Verified 2026-05-17.
+        feeds=(
+            "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
+        ),
     ),
-    (
-        "us",
-        "United States",
-        "https://news.google.com/rss/topics/CAAqIggKIhxDQkFTRHdvSkwyMHZNRGxqTjNjd0VnSmxiaWdBUAE?hl=en-US&gl=US&ceid=US:en",
+    NewsSection(
+        key="us",
+        title="United States",
+        feeds=(
+            "https://news.google.com/rss/topics/CAAqIggKIhxDQkFTRHdvSkwyMHZNRGxqTjNjd0VnSmxiaWdBUAE?hl=en-US&gl=US&ceid=US:en",
+        ),
     ),
-    (
-        "regional",
-        "Utah / Springville",
-        None,  # feed discovery TBD — see project_briefing_news memory
+    NewsSection(
+        key="regional",
+        title="Utah / Local",
+        # heraldextra.com and ksl.com don't expose working RSS feeds directly
+        # (heraldextra's WordPress feed templates 404, ksl serves empty bodies).
+        # Both are bridged via the self-hosted html2rss instance on noraid.
+        feeds=(
+            "http://192.168.1.25:8180/feed/heraldextra-com.xml",
+            "http://192.168.1.25:8180/feed/utah-county-breaking-news-local-stories-ksl.xml",
+        ),
+        max_items=10,
+        max_age_days=7,
     ),
-    (
-        "nwpx",
-        "NWPX Infrastructure",
-        None,  # multi-source: stock + SEC EDGAR + press releases
-    ),
-    (
-        "erp",
-        "ERP / Precast Software",
-        None,  # SAP RSS + web search for Muka/Titan
-    ),
-    (
-        "ai",
-        "AI",
-        None,  # Anthropic news + TechCrunch AI feed
-    ),
-    (
-        "church",
-        "LDS Church Newsroom",
+    NewsSection(key="nwpx", title="NWPX Infrastructure"),  # stub
+    NewsSection(key="erp", title="ERP / Precast Software"),  # stub
+    NewsSection(key="ai", title="AI"),  # stub
+    NewsSection(
+        key="church",
+        title="LDS Church Newsroom",
         # Reverse-discovered: WordPress-style feed. Confirm in production; if 404, swap.
-        "https://newsroom.churchofjesuschrist.org/rss",
+        feeds=("https://newsroom.churchofjesuschrist.org/rss",),
     ),
-]
+)
 
 
 def fetch() -> SectionResult:
     out_sections: list[dict[str, Any]] = []
-    for key, title, feed_url in SECTIONS:
-        if feed_url is None:
-            out_sections.append({"key": key, "title": title, "status": "stub", "entries": []})
+    for section in SECTIONS:
+        if not section.feeds:
+            out_sections.append(
+                {"key": section.key, "title": section.title, "status": "stub", "entries": []}
+            )
             continue
         try:
-            items = _pull_feed(feed_url)
-            out_sections.append({"key": key, "title": title, "status": "ready", "entries": items})
-            log.info("news.%s: %d items from %s", key, len(items), feed_url)
-        except Exception as exc:
-            log.exception("news.%s failed", key)
+            items = _pull_section(section)
             out_sections.append(
-                {"key": key, "title": title, "status": "error", "error": str(exc), "entries": []}
+                {
+                    "key": section.key,
+                    "title": section.title,
+                    "status": "ready",
+                    "entries": items,
+                }
+            )
+            log.info(
+                "news.%s: %d items from %d feed(s)", section.key, len(items), len(section.feeds)
+            )
+        except Exception as exc:
+            log.exception("news.%s failed", section.key)
+            out_sections.append(
+                {
+                    "key": section.key,
+                    "title": section.title,
+                    "status": "error",
+                    "error": str(exc),
+                    "entries": [],
+                }
             )
 
     return {"status": "ready", "sections": out_sections}
 
 
-def _pull_feed(url: str) -> list[dict[str, Any]]:
-    """Parse an RSS/Atom feed and return up to MAX_ITEMS_PER_SECTION normalized items."""
-    parsed = feedparser.parse(url)
-    items = []
-    for entry in parsed.entries[:MAX_ITEMS_PER_SECTION]:
-        items.append(
-            {
-                "title": getattr(entry, "title", "(no title)"),
-                "link": getattr(entry, "link", "#"),
-                "source": _extract_source(entry),
-            }
-        )
-    return items
+def _pull_section(section: NewsSection) -> list[dict[str, Any]]:
+    """Pull from every feed in the section, dedupe by URL, time-filter, sort, cap.
+
+    Sort is newest-first by entry pub date. Items without a parseable date sort
+    to the end (they still appear unless filtered out by max_age_days).
+    """
+    cutoff: datetime | None = None
+    if section.max_age_days is not None:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=section.max_age_days)
+
+    seen_links: set[str] = set()
+    candidates: list[dict[str, Any]] = []
+
+    for feed_url in section.feeds:
+        parsed = feedparser.parse(feed_url)
+        for entry in parsed.entries:
+            link = getattr(entry, "link", "") or ""
+            if link and link in seen_links:
+                continue
+
+            pub = _entry_dt(entry)
+            if cutoff is not None and (pub is None or pub < cutoff):
+                continue
+
+            if link:
+                seen_links.add(link)
+
+            candidates.append(
+                {
+                    "title": (getattr(entry, "title", "(no title)") or "(no title)").strip(),
+                    "link": link or "#",
+                    "source": _extract_source(entry),
+                    "_dt": pub,
+                }
+            )
+
+    # Newest first. Items without a date sort last via the datetime.min fallback.
+    candidates.sort(
+        key=lambda x: x.get("_dt") or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+
+    # Strip the private sort key and cap.
+    return [
+        {k: v for k, v in item.items() if not k.startswith("_")}
+        for item in candidates[: section.max_items]
+    ]
+
+
+def _entry_dt(entry: Any) -> datetime | None:
+    """Best-effort parse of an entry's pub date as UTC."""
+    for field_name in ("published_parsed", "updated_parsed"):
+        val = getattr(entry, field_name, None)
+        if val:
+            try:
+                return datetime(*val[:6], tzinfo=timezone.utc)
+            except (TypeError, ValueError):
+                continue
+    return None
 
 
 def _extract_source(entry: Any) -> str:
@@ -109,5 +190,4 @@ def _extract_source(entry: Any) -> str:
         title = getattr(src, "title", None) or (src.get("title") if isinstance(src, dict) else None)
         if title:
             return title
-    # Fall back to feed-level title if present.
     return ""
