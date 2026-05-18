@@ -157,7 +157,7 @@ SECTIONS: tuple[NewsSection, ...] = (
             "https://simonwillison.net/tags/ai/atom",
             "https://huggingface.co/blog/feed.xml",
             "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
-            "http://192.168.1.25:8180/feed/claude.xml",
+            "http://192.168.1.25:8180/feed/claude-2.xml",
             "https://openai.com/news/rss.xml",
             "https://blog.google/technology/ai/rss/",
         ),
