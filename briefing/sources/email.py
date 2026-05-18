@@ -1,8 +1,8 @@
-"""Unread / important emails — two Gmail queries, deduped, sorted chronologically.
+"""Unread / starred emails — two Gmail queries, deduped, sorted chronologically.
 
 No LLM triage, no classification. Pipeline:
   1. Q1: unread Primary-tab threads from the last 7 days.
-  2. Q2: starred OR important threads (still in inbox = not archived) from the last 30 days.
+  2. Q2: starred threads (still in inbox = not archived) from the last 30 days.
   3. Merge by thread_id (Q2 wins on metadata if a thread appears in both).
   4. Sort by the thread's latest internal date, oldest-first.
   5. Each item carries a `link` to the Gmail thread.
@@ -27,8 +27,10 @@ from briefing.sources import SectionResult
 log = logging.getLogger(__name__)
 
 # Two queries — each result deduped by thread id, then merged into a single list.
+# `is:important` was dropped 2026-05-18 — Gmail's algorithmic importance flag was
+# too noisy. User-applied stars are the only secondary signal we trust.
 UNREAD_PRIMARY_QUERY = "in:inbox category:primary is:unread newer_than:7d"
-STARRED_OR_IMPORTANT_QUERY = "in:inbox (is:starred OR is:important) newer_than:30d"
+STARRED_QUERY = "in:inbox is:starred newer_than:30d"
 
 # Per-query cap (the result count after dedupe is typically much smaller).
 MAX_PER_QUERY = 50
@@ -46,9 +48,9 @@ def fetch() -> SectionResult:
     service = build("gmail", "v1", credentials=creds, cache_discovery=False)
 
     threads_a = _search(service, UNREAD_PRIMARY_QUERY, max_results=MAX_PER_QUERY)
-    threads_b = _search(service, STARRED_OR_IMPORTANT_QUERY, max_results=MAX_PER_QUERY)
+    threads_b = _search(service, STARRED_QUERY, max_results=MAX_PER_QUERY)
     log.info(
-        "gmail: %d threads from unread-primary-7d, %d from starred-or-important-30d",
+        "gmail: %d threads from unread-primary-7d, %d from starred-30d",
         len(threads_a),
         len(threads_b),
     )
