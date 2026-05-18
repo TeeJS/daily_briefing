@@ -82,7 +82,16 @@ SECTIONS: tuple[NewsSection, ...] = (
         max_items=30,
         max_age_days=15,
     ),
-    NewsSection(key="erp", title="ERP / Precast Software"),  # stub
+    NewsSection(
+        key="erp",
+        title="SAP",
+        # Google News search for SAP, bridged through html2rss on noraid. The
+        # section was originally going to cover "ERP / Precast Software" (SAP +
+        # Muka Development + Titan 3000), but Muka and Titan are silent across
+        # all RSS-able channels — see project_briefing_news memory. Section
+        # renamed to just SAP to reflect what's actually fed.
+        feeds=("http://192.168.1.25:8180/feed/google-news-sap.xml",),
+    ),
     # The template splits SECTIONS in half across two columns: indices 0-3 go
     # left, 4-6 go right. Placing `regional` at index 4 puts the heavy local
     # feed (10 items) at the top of the right column to balance the visual
