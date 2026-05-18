@@ -63,7 +63,9 @@ def fetch() -> SectionResult:
 
     rendered = [_render_item(t) for t in items]
     log.info("gmail: %d total unique items (after dedupe)", len(rendered))
-    return {"status": "ready", "items": rendered}
+    # Key is `messages` not `items` — Jinja2 resolves `.items` on a dict to the
+    # built-in dict.items() method, not a key lookup. See CLAUDE.md gotcha note.
+    return {"status": "ready", "messages": rendered}
 
 
 def _render_item(t: dict[str, Any]) -> dict[str, Any]:
