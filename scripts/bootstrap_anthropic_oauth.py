@@ -57,11 +57,25 @@ def _exchange_code(code: str, state_in_code: str, verifier: str) -> dict:
     req = urllib.request.Request(
         ANTHROPIC_TOKEN_URL,
         data=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            # Anthropic's token endpoint 403s the default urllib User-Agent.
+            # Mimic the HA integration's client. (Verified 2026-05-17.)
+            "User-Agent": "daily_briefing-bootstrap/0.1",
+            "Accept": "application/json",
+        },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        # Read and surface the response body so we can debug the underlying reason.
+        body_text = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Anthropic token exchange failed: HTTP {e.code} {e.reason}\n"
+            f"Response body: {body_text}"
+        ) from e
 
 
 def main() -> int:
