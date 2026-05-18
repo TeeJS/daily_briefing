@@ -29,10 +29,15 @@ DEFAULT_MAX_ITEMS = 4
 class NewsSection:
     """One subsection of the news digest.
 
-    feeds         tuple of RSS/Atom URLs. Empty = the section is a stub.
-    max_items     cap after merge+dedup+filter. Defaults to 4.
-    max_age_days  if set, drop entries older than this many days (uses the
-                  entry's published_parsed / updated_parsed). None = no filter.
+    feeds             tuple of RSS/Atom URLs. Empty = the section is a stub.
+    max_items         cap after merge+dedup+filter. Defaults to 4.
+    max_age_days      if set, drop entries older than this many days (uses the
+                      entry's published_parsed / updated_parsed). None = no filter.
+    blocked_sources   case-insensitive substring matches against the entry's
+                      Google-News-style <source> title (e.g. "GuruFocus",
+                      "TradingKey"). Useful for filtering out stock-pump farms
+                      and off-topic outlets that Google News surfaces because
+                      the section keyword appears in arena/team names etc.
     """
 
     key: str
@@ -40,6 +45,7 @@ class NewsSection:
     feeds: tuple[str, ...] = field(default_factory=tuple)
     max_items: int = DEFAULT_MAX_ITEMS
     max_age_days: int | None = None
+    blocked_sources: tuple[str, ...] = field(default_factory=tuple)
 
 
 SECTIONS: tuple[NewsSection, ...] = (
@@ -91,6 +97,21 @@ SECTIONS: tuple[NewsSection, ...] = (
         # all RSS-able channels — see project_briefing_news memory. Section
         # renamed to just SAP to reflect what's actually fed.
         feeds=("http://192.168.1.25:8180/feed/google-news-sap.xml",),
+        # The Google News SAP search is polluted by two failure modes:
+        #   1) Stock-pump farms (GuruFocus, TradingKey, Simply Wall St, etc.)
+        #      that auto-publish multiple times a day, swamping the
+        #      newest-first sort with low-quality "SAP rallied X% today" posts.
+        #   2) Off-topic outlets that match "SAP" in arena/team names like
+        #      "SAP Center" (Field Level Media's PWHL article showed up here).
+        # Substring match against the entry's <source> title is case-insensitive.
+        blocked_sources=(
+            "GuruFocus",
+            "TradingKey",
+            "Simply Wall St",
+            "Defense World",
+            "Insider Monkey",
+            "Field Level Media",
+        ),
     ),
     # The template splits SECTIONS in half across two columns: indices 0-3 go
     # left, 4-6 go right. Placing `regional` at index 4 puts the heavy local
@@ -167,6 +188,7 @@ def _pull_section(section: NewsSection) -> list[dict[str, Any]]:
 
     seen_links: set[str] = set()
     candidates: list[dict[str, Any]] = []
+    blocked_lower = tuple(s.lower() for s in section.blocked_sources)
 
     for feed_url in section.feeds:
         parsed = feedparser.parse(feed_url)
@@ -179,6 +201,10 @@ def _pull_section(section: NewsSection) -> list[dict[str, Any]]:
             if cutoff is not None and (pub is None or pub < cutoff):
                 continue
 
+            source = _extract_source(entry)
+            if blocked_lower and any(b in source.lower() for b in blocked_lower):
+                continue
+
             if link:
                 seen_links.add(link)
 
@@ -186,7 +212,7 @@ def _pull_section(section: NewsSection) -> list[dict[str, Any]]:
                 {
                     "title": (getattr(entry, "title", "(no title)") or "(no title)").strip(),
                     "link": link or "#",
-                    "source": _extract_source(entry),
+                    "source": source,
                     "_dt": pub,
                 }
             )
