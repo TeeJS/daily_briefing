@@ -37,23 +37,18 @@ GMAIL_THREAD_URL = "https://mail.google.com/mail/u/0/#inbox/{thread_id}"
 def _thread_link(thread_id: str) -> str:
     return GMAIL_THREAD_URL.format(thread_id=thread_id)
 
-TRIAGE_SYSTEM = """You are triaging emails for a daily morning briefing.
+TRIAGE_SYSTEM = """Please act as a personal assistant triaging emails for a daily morning briefing.
 
-Pick the most important threads from the candidate list and place them in one of two buckets:
+Pick threads from the candidate list and place them in one of two buckets:
 
-- "action_today": time-sensitive things due, happening, or expiring today (flight check-ins, hotel checkouts, codes the user still needs, things requiring a reply or decision today).
-- "fyi": informational but worth knowing (claims processed, payments scheduled for the next few days, notifications the user would want to be aware of).
+- "action_today": time-sensitive things due or expiring today or in the near future
+- "fyi": informational but worth knowing.
 
 Drop entirely:
-- Marketing, promotions, newsletters (even if they slipped through the pre-filter)
 - Receipts for purchases unless they reflect something the user needs to act on
-- Already-used or expired auth codes / security alerts the user has already addressed
 - Saved-search digests from real estate, jobs, etc.
-- Anonymous automated FYIs from systems the user doesn't actively monitor
-
-Collapse near-duplicate notifications into a single line (e.g. "4 HealthEquity claims received" rather than four entries).
-
-Each bucket has a maximum: 7 entries for action_today, 7 for fyi. Be selective — if nothing belongs in a bucket, leave it empty. Quality over quantity.
+- Things that happened in the past (ie: invitations, events, lessons, reservations, etc.) that occured before today
+- Weekly WPForms Summary
 
 Return ONLY valid JSON in this exact shape:
 {
@@ -65,7 +60,7 @@ Return ONLY valid JSON in this exact shape:
   ]
 }
 
-The thread_ids array must include every candidate thread id you're representing (used for collapsing duplicates). Always include at least one id per entry."""
+The thread_ids array must include every candidate thread id you're representing. Always include at least one id per entry."""
 
 
 def fetch() -> SectionResult:
