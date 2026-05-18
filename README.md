@@ -1,6 +1,6 @@
 # daily_briefing
 
-A scheduled job that delivers a daily HTML email summarizing the things I want to start each day with. Designed so the same HTML can be served verbatim from `briefing.schmitzplex.com` (planned).
+A scheduled job that writes a daily HTML file summarizing the things I want to start each day with. The same HTML is served from `briefing.schmitzplex.com` (planned) — that's the user-facing distribution channel. The job has zero send/modify authority on any account; Google OAuth scopes are read-only.
 
 ## What the briefing contains
 
@@ -24,10 +24,9 @@ Each morning at 6:00 AM Mountain Time:
 - **Runtime**: ephemeral Docker container running on the main Unraid server (`noraid.schmitzplex.com`).
 - **Schedule**: Unraid User Scripts plugin, cron `0 6 * * *` (America/Denver).
 - **LLM**: local — calls the LiteLLM proxy on the other Unraid server (`lite.schmitzplex.com:4000`). LiteLLM routes to a llama.cpp backend. The Anthropic API is not called at runtime.
-- **Image**: built by GitHub Actions on push to `main`, pushed to `ghcr.io/teejs/daily-briefing:latest`.
+- **Image**: built by GitHub Actions on push to `main`, pushed to `ghcr.io/teejs/daily_briefing:latest`.
 - **State** (secrets, OAuth tokens, daily archive, logs) lives on Unraid at `/mnt/user/appdata/daily_briefing/`, mounted into the container. Nothing stateful in the image.
-- **Delivery**: HTML email via the Gmail API, sent from the user account to itself.
-- **Archive**: every day's rendered HTML is written to `/mnt/user/appdata/daily_briefing/briefings/YYYY/MM/DD.html`. When `briefing.schmitzplex.com` is built, it serves this directory directly via the existing reverse proxy.
+- **Delivery**: HTML file written to `/mnt/user/appdata/daily_briefing/briefings/YYYY/MM/DD.html`. The reverse proxy on Unraid (Caddy / SWAG / nginx-proxy-manager — whichever's configured) serves that directory at `briefing.schmitzplex.com`. No email is sent; the briefing's Google OAuth grant is read-only (calendar + inbox view), with no send authority.
 
 ## Repo layout
 
@@ -38,7 +37,6 @@ Each morning at 6:00 AM Mountain Time:
 │   ├── config.py                 # env vars, paths
 │   ├── secrets.py                # load/persist OAuth tokens
 │   ├── render.py                 # Jinja2 HTML renderer
-│   ├── send.py                   # Gmail API send
 │   ├── sources/                  # one module per data source
 │   │   ├── calendar.py
 │   │   ├── email.py              # (stub for now)
@@ -63,10 +61,12 @@ Scaffolding + calendar section + email delivery are functional. The other four s
 
 These are one-time steps to bootstrap the deployment.
 
-### 1. Google OAuth (Gmail send + Calendar read)
+### 1. Google OAuth (Calendar read + Gmail read)
+
+Both scopes are read-only. The briefing job has no send/modify authority on the Google account.
 
 1. Create a Google Cloud project at https://console.cloud.google.com/.
-2. Enable the Gmail API and the Google Calendar API.
+2. Enable the **Google Calendar API** and the **Gmail API** (both must be enabled or Google silently drops the scope during consent).
 3. Configure the OAuth consent screen (External, with your account as a test user).
 4. Create OAuth client credentials — Desktop App type. Download the `client_secret.json`.
 5. On the Unraid host, place it at `/mnt/user/appdata/daily_briefing/secrets/google_client_secret.json`.
@@ -84,9 +84,9 @@ These are one-time steps to bootstrap the deployment.
 - Add a new script with cron schedule `0 6 * * *` and this body:
   ```bash
   #!/bin/bash
-  docker pull ghcr.io/teejs/daily-briefing:latest
+  docker pull ghcr.io/teejs/daily_briefing:latest
   docker run --rm \
-    --name daily-briefing \
+    --name daily_briefing \
     -v /mnt/user/appdata/daily_briefing/secrets:/app/secrets \
     -v /mnt/user/appdata/daily_briefing/briefings:/app/briefings \
     -v /mnt/user/appdata/daily_briefing/logs:/app/logs \
@@ -94,7 +94,7 @@ These are one-time steps to bootstrap the deployment.
     -e LLM_MODEL=<your-litellm-model-name> \
     -e TZ=America/Denver \
     -e ETSY_CLIENT_ID=<your-etsy-keystring> \
-    ghcr.io/teejs/daily-briefing:latest
+    ghcr.io/teejs/daily_briefing:latest
   ```
 
 ### 3. Anthropic OAuth (Claude usage section)
@@ -137,6 +137,6 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -e .
 
-# dry-run (renders to ./briefings/YYYY/MM/DD.html, skips send)
-python -m briefing.run --dry-run
+# run once — writes ./briefings/YYYY/MM/DD.html
+python -m briefing.run
 ```

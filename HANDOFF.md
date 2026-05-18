@@ -15,21 +15,22 @@ What's done, what's next, and exactly what to do to get the briefing running. Ai
 | Section | State | Notes |
 |---|---|---|
 | 📅 Calendar | Full | Pulls from 6 included calendars; kids' calendars (`jonah@`, `noah@`) excluded |
-| 📧 Important emails | Full | Broad Gmail pre-filter + LLM triage into Action today / FYI; starred bypasses filter |
+| 📧 Important emails | Full | Broad Gmail pre-filter (`gmail.readonly` scope, read-only) + LLM triage into Action today / FYI; starred bypasses filter |
 | 🤖 Claude usage | Full | Undocumented `/api/oauth/usage` endpoint |
 | 📦 Etsy orders | Full | Unshipped paid receipts, bucketed by overdue / due-soon / other |
 | 📰 News v1 | Partial | 3 of 7 subsections live (World, US, LDS Newsroom). 4 sub-stubs: Utah/Springville, NWPX, ERP/SAP/Muka/Titan, AI |
 
+**Delivery**: HTML file written to `/mnt/user/appdata/daily_briefing/briefings/YYYY/MM/DD.html`. No email is sent. The Google OAuth grant is read-only (calendar + inbox view) with no send/modify authority.
+
 ## To get it running in production
 
-### Step 1 — Make the ghcr.io package public (or set up `docker login`)
+### Step 1 — ghcr.io package visibility ✅ (done)
 
-Repo is private, which means the package is too by default. The image contains zero secrets, so making just the package public is the simplest path:
+The `ghcr.io/teejs/daily_briefing` package is public — noraid can pull it anonymously.
 
-1. https://github.com/users/TeeJS/packages/container/daily-briefing/settings
-2. Danger Zone → Change package visibility → Public
+Verify with `curl -sI https://ghcr.io/v2/teejs/daily_briefing/manifests/latest -H "Authorization: Bearer $(curl -s 'https://ghcr.io/token?service=ghcr.io&scope=repository:teejs/daily_briefing:pull' | python -c 'import sys,json;print(json.load(sys.stdin)["token"])')"` → expect HTTP 200. (The initial unauthenticated GET returns 401 by OCI convention; that's the bearer-token dance, not a private-package signal.)
 
-Alternative: create a PAT with `read:packages` scope and `docker login ghcr.io -u TeeJS --password-stdin` on noraid.
+If the package ever needs to go private again, the alternative is a PAT with `read:packages` and `docker login ghcr.io -u TeeJS --password-stdin` on noraid.
 
 ### Step 2 — Create the appdata tree on noraid
 
@@ -53,14 +54,14 @@ mkdir local_secrets -ErrorAction SilentlyContinue
 
 (On subsequent runs, skip the `python -m venv` and `pip install -e .` lines — just `cd`, `activate`, set env vars.)
 
-**3a. Google (Gmail send + Calendar read)**
+**3a. Google (Calendar read + Gmail read — both read-only)**
 1. https://console.cloud.google.com/ — create or reuse a project
-2. Enable Gmail API + Google Calendar API
+2. Enable **Google Calendar API** and **Gmail API** (both must be enabled or Google silently drops the scope during consent)
 3. OAuth consent screen → External, add yourself as a test user
 4. Credentials → OAuth client ID → **Desktop app**
 5. Download the JSON, save as `local_secrets/google_client_secret.json`
 6. `python scripts/bootstrap_google_oauth.py`
-7. Browser opens, you authorize, control returns. `local_secrets/google_tokens.json` created.
+7. Browser opens, you authorize (the consent screen will list two read-only scopes; no send/modify). `local_secrets/google_tokens.json` created.
 
 **3b. Anthropic (Claude usage)**
 
@@ -102,9 +103,9 @@ Settings → User Scripts → Add New Script → name `daily_briefing`. Body:
 
 ```bash
 #!/bin/bash
-docker pull ghcr.io/teejs/daily-briefing:latest
+docker pull ghcr.io/teejs/daily_briefing:latest
 docker run --rm \
-  --name daily-briefing \
+  --name daily_briefing \
   -v /mnt/user/appdata/daily_briefing/secrets:/app/secrets \
   -v /mnt/user/appdata/daily_briefing/briefings:/app/briefings \
   -v /mnt/user/appdata/daily_briefing/logs:/app/logs \
@@ -112,21 +113,21 @@ docker run --rm \
   -e LLM_MODEL=<your-litellm-model-name> \
   -e TZ=America/Denver \
   -e ETSY_CLIENT_ID=<your-etsy-keystring> \
-  ghcr.io/teejs/daily-briefing:latest
+  ghcr.io/teejs/daily_briefing:latest
 ```
 
-Replace `<your-litellm-model-name>` with whatever LiteLLM advertises and `<your-etsy-keystring>` with the same value used in step 3c.
+Replace `<your-litellm-model-name>` with whatever LiteLLM advertises and `<your-etsy-keystring>` with the same value used in step 3c. (The image and container name use an underscore, matching the GitHub repo name and the published ghcr.io package; an earlier doc draft used a hyphen — corrected.)
 
 Schedule: Custom → `0 6 * * *` (6 AM MT, matches `TZ=America/Denver`).
 
 ### Step 7 — Manual test
 
 Click **Run Script**. Wait ~30 seconds. Verify:
-- `/mnt/user/appdata/daily_briefing/logs/briefing-2026-05.log` has a "sent email" line
+- `/mnt/user/appdata/daily_briefing/logs/briefing-2026-05.log` has a "wrote briefing to …" line
 - `/mnt/user/appdata/daily_briefing/briefings/2026/05/DD.html` exists
-- Inbox at teejschmitz@gmail.com has a "Daily Briefing — …" email
+- Open that file in a browser (or hit it via `briefing.schmitzplex.com` once the reverse proxy is wired up) — every section renders, no error blocks
 
-If any section failed, its error block in the email tells you which bootstrap script to re-run.
+If any section failed, its error block in the rendered HTML tells you which bootstrap script to re-run.
 
 ## What still needs to be built
 
@@ -153,13 +154,13 @@ In rough priority order:
 
 ### Polish
 
-- Mobile reflow for narrow screens (the 2-column layout currently scales rather than stacks on phones — Gmail mobile handles it, but reflow would be nicer)
+- Mobile reflow for narrow screens (the 2-column layout currently scales rather than stacks on phones — fine in modern browsers, but reflow would be nicer)
 - Per-section render error isolation (currently a single bad section's template can crash the whole render, since renderer-side errors aren't isolated like fetch errors are)
 - Tests around the orchestrator's error-isolation and the template rendering for each section status
+- Reverse-proxy entry for `briefing.schmitzplex.com` → `/mnt/user/appdata/daily_briefing/briefings/` on noraid + a small chronological `index.html` generator
 
 ## Pending decisions
 
-- **ghcr.io package visibility** (Step 1 above) — user needs to choose public vs. authenticated pull
 - **`LLM_MODEL` name** — depends on what LiteLLM is configured with
 
 ## Key file pointers for navigation
@@ -176,14 +177,14 @@ In rough priority order:
 
 ## Repo / infra summary
 
-- **Repo**: https://github.com/TeeJS/daily_briefing (private)
-- **Image**: `ghcr.io/teejs/daily-briefing:latest` (visibility TBD per Step 1)
+- **Repo**: https://github.com/TeeJS/daily_briefing (public)
+- **Image**: `ghcr.io/teejs/daily_briefing:latest` (public package)
 - **Build**: GitHub Actions on push to `main` (`.github/workflows/build-and-push.yml`)
 - **Runtime host**: `noraid.schmitzplex.com` (192.168.1.25) — main Unraid box
 - **LLM host**: `oc.schmitzplex.com` (192.168.1.95) — second Unraid box, runs LiteLLM at `:4000`, llama.cpp at `:8080`
 - **Schedule**: Unraid User Scripts, cron `0 6 * * *` America/Denver
 - **State on Unraid**: `/mnt/user/appdata/daily_briefing/{secrets,briefings,logs}`
-- **Delivery**: HTML email via Gmail API, sent from teejschmitz@gmail.com to itself
-- **Archive**: `briefings/YYYY/MM/DD.html` — future source for `briefing.schmitzplex.com`
+- **Delivery**: static HTML file written to `briefings/YYYY/MM/DD.html` on Unraid. No email sent. Google OAuth grant is read-only (calendar + inbox view).
+- **Archive / consumption**: `briefings/YYYY/MM/DD.html` served by the existing reverse proxy at `briefing.schmitzplex.com` (reverse-proxy entry still to be wired up).
 
 For architecture context not in CLAUDE.md, see the memory files at `C:\Users\tschmitz\.claude\projects\D--Github-daily-briefing\memory\` (local to this Windows desktop).

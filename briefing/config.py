@@ -51,11 +51,10 @@ INCLUDED_CALENDARS: tuple[CalendarRef, ...] = (
 )
 
 # Google OAuth scopes the briefing job needs.
+# Both are read-only — the briefing has no send/modify authority on the user's account.
+# Delivery is via HTML file on disk, not Gmail send.
 GOOGLE_SCOPES = (
     "https://www.googleapis.com/auth/calendar.readonly",
-    "https://www.googleapis.com/auth/gmail.send",
-    # gmail.readonly is for the future email-triage section; including it now means
-    # the user only has to consent once.
     "https://www.googleapis.com/auth/gmail.readonly",
 )
 

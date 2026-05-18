@@ -4,7 +4,7 @@ Context for future Claude Code sessions working on this repo. Read this first.
 
 ## What this is
 
-A scheduled daily HTML email briefing. Runs in a Docker container on Unraid (`noraid.schmitzplex.com`) at 6 AM MT, pulls data from 5 sources, renders one self-contained HTML document, archives to disk, and sends via Gmail API. The same HTML is intended to be served verbatim from `briefing.schmitzplex.com` when that site is built.
+A scheduled daily briefing rendered as a static HTML file. Runs in a Docker container on Unraid (`noraid.schmitzplex.com`) at 6 AM MT, pulls data from 5 sources, and writes one self-contained HTML document to `/mnt/user/appdata/daily_briefing/briefings/YYYY/MM/DD.html`. The reverse proxy serves that directory at `briefing.schmitzplex.com`. **No email is sent** — the Google OAuth grant is read-only (calendar + inbox view) and the job has no send/modify authority anywhere.
 
 User: TJ Schmitz (teejschmitz@gmail.com), running on Windows 11.
 
@@ -12,14 +12,13 @@ User: TJ Schmitz (teejschmitz@gmail.com), running on Windows 11.
 
 ```
 briefing/                  Python package (the actual code)
-  run.py                   Entry point: python -m briefing.run [--dry-run] [--date YYYY-MM-DD]
+  run.py                   Entry point: python -m briefing.run [--date YYYY-MM-DD]
   config.py                Env vars, paths, OAuth constants, calendar inclusion list
   secrets.py               Google OAuth credentials load/save
   anthropic_auth.py        Anthropic OAuth tokens (load + auto-refresh)
   etsy_auth.py             Etsy OAuth tokens (load + auto-refresh)
   llm.py                   OpenAI SDK wrapper pointed at the local LiteLLM proxy
   render.py                Jinja2 HTML renderer
-  send.py                  Gmail API send
   sources/                 One module per data source, each exposes fetch() -> SectionResult
     calendar.py            Full
     email.py               Full (LLM triage)
@@ -35,7 +34,7 @@ scripts/
   bootstrap_etsy_oauth.py       One-time browser auth (PKCE)
 
 Dockerfile                 python:3.12-slim base
-.github/workflows/build-and-push.yml   Builds + pushes to ghcr.io/teejs/daily-briefing:latest on push to main
+.github/workflows/build-and-push.yml   Builds + pushes to ghcr.io/teejs/daily_briefing:latest on push to main
 ```
 
 ## Data flow
@@ -44,7 +43,7 @@ Dockerfile                 python:3.12-slim base
 
 Each `fetch()` returns a dict with a `status` field: `"ready"` | `"stub"` | `"error"`. The template handles all three branches per section.
 
-After gathering: `render.render(sections, today)` produces `(subject, html)`. The HTML is written to the archive path (`briefings/YYYY/MM/DD.html`) **before** the email is sent — archive is the source of truth, email is one delivery channel. With `--dry-run`, archive is written, send is skipped.
+After gathering: `render.render(sections, today)` produces `(subject, html)` — the subject is embedded in the HTML `<title>` and otherwise unused. The HTML is written to the archive path (`briefings/YYYY/MM/DD.html`). That file is the final deliverable; the reverse proxy serves the archive directory directly.
 
 ## OAuth: three bootstraps, one pattern
 
@@ -56,6 +55,8 @@ All three (Google, Anthropic, Etsy) follow the same model:
 - The briefing job needs `secrets/` mounted **read-write** because of this rotation
 
 Anthropic uses the public client_id from the `trickv/hass-claude-usage` HA integration. Etsy and Google need user-registered OAuth apps (their client_id / keystring becomes runtime env: `ETSY_CLIENT_ID`; Google's `client_secret.json` lives in `secrets/`).
+
+**Google scopes are read-only**: `calendar.readonly` (for today's events) and `gmail.readonly` (for the Important Emails section's inbox triage). The job has no send/modify authority on the Google account. If the Gmail API is not enabled in the GCP project, Google silently drops `gmail.readonly` from the consent response — make sure both APIs are enabled before running the bootstrap.
 
 ## LLM access
 
@@ -99,14 +100,14 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -e .
 
-# Dry-run with local paths (skips email send, just renders to disk)
+# Run with local paths — writes the HTML to .\preview\briefings\YYYY\MM\DD.html
 $env:BRIEFING_SECRETS_DIR = ".\preview\secrets"
 $env:BRIEFING_ARCHIVE_DIR = ".\preview\briefings"
 $env:BRIEFING_LOGS_DIR = ".\preview\logs"
-python -m briefing.run --dry-run
+python -m briefing.run
 ```
 
-`preview/` is gitignored. Without OAuth tokens, sources fail gracefully into error blocks — useful for template/rendering work.
+`preview/` is gitignored. Without OAuth tokens, sources fail gracefully into error blocks — useful for template/rendering work. Open the resulting HTML file in any browser.
 
 ## Conventions
 
