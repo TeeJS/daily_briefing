@@ -148,7 +148,25 @@ SECTIONS: tuple[NewsSection, ...] = (
         # Reverse-discovered: WordPress-style feed. Confirm in production; if 404, swap.
         feeds=("https://newsroom.churchofjesuschrist.org/rss",),
     ),
-    NewsSection(key="ai", title="AI"),  # stub
+    NewsSection(
+        key="ai",
+        title="AI",
+        # Six feeds, merged, deduped by URL, last 48 hours only, sorted by
+        # date. No blocked_sources, no relevance ranking — straight chronological.
+        feeds=(
+            "https://simonwillison.net/tags/ai/atom",
+            "https://huggingface.co/blog/feed.xml",
+            "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
+            "http://192.168.1.25:8180/feed/claude.xml",
+            "https://openai.com/news/rss.xml",
+            "https://blog.google/technology/ai/rss/",
+        ),
+        # 2 days = 48 hours exact (timedelta(days=2)).
+        max_age_days=2,
+        # Effectively uncapped within the 48h window.
+        max_items=50,
+        sort_by_date=True,
+    ),
 )
 
 
