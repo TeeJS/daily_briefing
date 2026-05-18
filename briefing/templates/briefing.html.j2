@@ -39,6 +39,13 @@
             <td style="padding:4px 0;vertical-align:top;">
               {%- if ev.is_error -%}
                 <span style="color:#b00;">{{ ev.calendar }}: {{ ev.error }}</span>
+              {%- elif ev.link -%}
+                <a href="{{ ev.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
+                  <div style="font-weight:500;color:#222;">{{ ev.summary }}</div>
+                  <div style="font-size:12px;color:#888;margin-top:2px;">
+                    {{ ev.calendar }}{% if ev.location %} &middot; {{ ev.location }}{% endif %}
+                  </div>
+                </a>
               {%- else -%}
                 <div style="font-weight:500;color:#222;">{{ ev.summary }}</div>
                 <div style="font-size:12px;color:#888;margin-top:2px;">
@@ -110,7 +117,7 @@
           {% for item in email.messages %}
           <tr>
             <td style="padding:4px 0;vertical-align:top;">
-              <a href="{{ item.link }}" style="display:block;text-decoration:none;">
+              <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
                 <div style="color:#888;font-size:12px;">
                   {{ item.sender }}{% if item.date_str %} <span style="color:#aaa;">· {{ item.date_str }}</span>{% endif %}
                 </div>
@@ -176,7 +183,7 @@
         <ul style="margin:0 0 4px;padding:0 0 0 18px;font-size:13px;color:#222;">
           {% for item in sub.entries %}
             <li style="margin:3px 0;line-height:1.35;">
-              <a href="{{ item.link }}" style="color:#1a4d99;text-decoration:none;">{{ item.title }}</a>
+              <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" style="color:#1a4d99;text-decoration:none;">{{ item.title }}</a>
               {% if item.source %}<span style="color:#888;font-size:11px;"> &middot; {{ item.source }}</span>{% endif %}
             </li>
           {% endfor %}
@@ -247,7 +254,7 @@
 
   <div style="margin-top:20px;padding-top:16px;border-top:1px solid #ddd;font-size:12px;color:#999;text-align:center;">
     Generated {{ generated_at }} &middot;
-    <a href="{{ archive_url }}" style="color:#999;text-decoration:underline;">View archive</a>
+    <a href="{{ archive_url }}" target="_blank" rel="noopener noreferrer" style="color:#999;text-decoration:underline;">View archive</a>
   </div>
 
 </div>
