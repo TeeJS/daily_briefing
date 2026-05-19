@@ -228,10 +228,14 @@ def fetch() -> SectionResult:
 def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
     """Pull from every feed in the section, dedupe by URL, time-filter, sort, cap.
 
+    URL resolution (for Google News wrapped links) is deferred until after sorting
+    and capping: we resolve only the URLs we intend to keep rather than every entry
+    in the feed. This keeps each section fast even when a feed returns 50+ items.
+
     Sort is newest-first by entry pub date. Items without a parseable date sort
     to the end (they still appear unless filtered out by max_age_days).
     paywall_blocklist: frozenset of lowercase domains; entries whose link contains
-    any listed domain are dropped before capping.
+    any listed domain are dropped (replaced from candidates until max_items filled).
     """
     cutoff: datetime | None = None
     if section.max_age_days is not None:
@@ -244,8 +248,9 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
     for feed_url in section.feeds:
         parsed = feedparser.parse(feed_url)
         for entry in parsed.entries:
-            link = _resolve_url(getattr(entry, "link", "") or "")
-            if link and link in seen_links:
+            # Dedup on the raw (possibly wrapped) link — cheap, no HTTP calls.
+            raw_link = getattr(entry, "link", "") or ""
+            if raw_link and raw_link in seen_links:
                 continue
 
             pub = _entry_dt(entry)
@@ -256,16 +261,13 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
             if blocked_lower and any(b in source.lower() for b in blocked_lower):
                 continue
 
-            if paywall_blocklist and any(d in link.lower() for d in paywall_blocklist):
-                continue
-
-            if link:
-                seen_links.add(link)
+            if raw_link:
+                seen_links.add(raw_link)
 
             candidates.append(
                 {
                     "title": (getattr(entry, "title", "(no title)") or "(no title)").strip(),
-                    "link": link or "#",
+                    "link": raw_link or "#",
                     "source": source,
                     "_dt": pub,
                 }
@@ -278,11 +280,20 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
             reverse=True,
         )
 
-    # Strip the private sort key and cap.
-    return [
-        {k: v for k, v in item.items() if not k.startswith("_")}
-        for item in candidates[: section.max_items]
-    ]
+    # Resolve URLs lazily: walk candidates in order, decode only what we keep,
+    # stop once we have max_items. This bounds gnewsdecoder calls to ≤ max_items
+    # instead of the full feed size.
+    result: list[dict[str, Any]] = []
+    for item in candidates:
+        if len(result) >= section.max_items:
+            break
+        link = _resolve_url(item["link"])
+        if paywall_blocklist and any(d in link.lower() for d in paywall_blocklist):
+            continue
+        result.append(
+            {k: v for k, v in item.items() if not k.startswith("_")} | {"link": link}
+        )
+    return result
 
 
 def _entry_dt(entry: Any) -> datetime | None:
