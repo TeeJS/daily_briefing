@@ -30,13 +30,10 @@ def fetch() -> SectionResult:
     access_token, shop_id = get_credentials()
 
     receipts = _fetch_unshipped_receipts(access_token, shop_id)
-    # Log raw status for every receipt before filtering — helps diagnose unexpected entries.
-    for r in receipts:
-        log.info("etsy receipt %s: status=%r", r.get("receipt_id"), r.get("status"))
     # Filter to genuinely active orders only. "open" in Etsy's API means unpaid/pending;
-    # paid-but-unshipped orders have status="paid". Exclude "completed" (manually closed)
-    # and "canceled" only.
-    receipts = [r for r in receipts if r.get("status") not in ("completed", "canceled")]
+    # paid-but-unshipped orders have status="Paid". Etsy returns title-cased status strings
+    # ("Paid", "Canceled", "Completed") — compare case-insensitively to be safe.
+    receipts = [r for r in receipts if (r.get("status") or "").lower() not in ("completed", "canceled")]
     log.info("etsy: %d active unshipped receipts", len(receipts))
 
     now = datetime.now(TIMEZONE)
