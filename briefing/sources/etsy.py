@@ -30,10 +30,11 @@ def fetch() -> SectionResult:
     access_token, shop_id = get_credentials()
 
     receipts = _fetch_unshipped_receipts(access_token, shop_id)
-    # Filter to genuinely active orders only. "completed" receipts can appear with
-    # was_shipped=false when manually closed rather than marked shipped.
-    receipts = [r for r in receipts if r.get("status") == "open"]
-    log.info("etsy: %d open unshipped receipts", len(receipts))
+    # Filter to genuinely active orders only. "open" in Etsy's API means unpaid/pending;
+    # paid-but-unshipped orders have status="paid". Exclude "completed" (manually closed)
+    # and "canceled" only.
+    receipts = [r for r in receipts if r.get("status") not in ("completed", "canceled")]
+    log.info("etsy: %d active unshipped receipts", len(receipts))
 
     now = datetime.now(TIMEZONE)
     soon_cutoff = now + timedelta(days=DUE_SOON_DAYS)
