@@ -297,7 +297,7 @@
         <tr>
           <td style="padding:4px 0 8px;vertical-align:top;font-size:14px;color:var(--fg);">
             <div style="font-weight:600;color:{{ label_color }};">{{ label_text }} &middot; {% if o.etsy_url %}<a href="{{ o.etsy_url }}" style="color:inherit;text-decoration:none;">#{{ o.receipt_id }}</a>{% else %}#{{ o.receipt_id }}{% endif %}</div>
-            <div style="margin-top:2px;">{{ o.buyer_name }}{% if o.ship_to %} &middot; {{ o.ship_to }}{% endif %} &middot; ${{ "%.2f"|format(o.total_dollars or 0) }}</div>
+            <div style="margin-top:2px;color:var(--fg-3);">{{ o.buyer_name }}{% if o.ship_to %} &middot; {{ o.ship_to }}{% endif %} &middot; ${{ "%.2f"|format(o.total_dollars or 0) }}</div>
             <div style="font-size:12px;color:var(--fg-3);margin-top:1px;">
               {{ o.item_count }} item{% if o.item_count != 1 %}s{% endif %}
               {%- if o.titles %} — {{ o.titles | join("; ") }}{% if o.more_titles %} +{{ o.more_titles }} more{% endif %}{% endif -%}
@@ -323,7 +323,7 @@
           {% endif %}
           {% if etsy.other %}
             <tr><td style="padding:{% if etsy.overdue or etsy.due_soon %}12{% else %}8{% endif %}px 0 4px;font-size:12px;font-weight:600;color:var(--fg-2);text-transform:uppercase;letter-spacing:0.05em;">Upcoming ({{ etsy.other | length }})</td></tr>
-            {% for o in etsy.other %}{{ order_row(o, "var(--fg-3)", "ship by " ~ o.ship_by_str) }}{% endfor %}
+            {% for o in etsy.other %}{{ order_row(o, "var(--fg)", "ship by " ~ o.ship_by_str) }}{% endfor %}
           {% endif %}
         </table>
       {% endif %}
