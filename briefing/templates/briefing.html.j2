@@ -40,13 +40,13 @@
       --fg-4:        #909090;
       --fg-5:        #808080;
       --fg-6:        #707070;
-      --header-bg:   #502f2f;
+      --header-bg:   #2c2941;
       --header-fg:   #ffffff;
       --stub-bg:     #1f1f1f;
       --stub-border: #444444;
       --border:      #444444;
       --border-strong: #444444;
-      --link:        #443dff;
+      --link:        #7b79af;
       --link-visited:#B0B0B0;
       --error:       #ff6b6b;
       --warn:        #ffb454;
@@ -62,13 +62,13 @@
     --fg-4:        #909090;
     --fg-5:        #808080;
     --fg-6:        #707070;
-    --header-bg:   #502f2f;
+    --header-bg:   #2c2941;
     --header-fg:   #ffffff;
     --stub-bg:     #1f1f1f;
     --stub-border: #444444;
     --border:      #444444;
     --border-strong: #444444;
-    --link:        #443dff;
+    --link:        #7b79af;
     --link-visited:#B0B0B0;
     --error:       #ff6b6b;
     --warn:        #ffb454;
@@ -84,9 +84,17 @@
 
   /* News links: read-state styling via :visited.
      :visited can only safely change color/bg/border/outline/text-decoration
-     per modern browser privacy rules — we only change color, which is allowed. */
+     per browser privacy rules. Additionally, Chromium-based browsers block
+     CSS variable resolution inside :visited (anti-history-sniffing), so the
+     visited colors MUST be hard-coded literals here — not var() refs. */
   .news-link          { color: var(--link); text-decoration: none; }
-  .news-link:visited  { color: var(--link-visited); }
+  .news-link:visited  { color: #8a6fa3; }  /* light mode visited (muted purple) */
+
+  /* Dark mode visited override — also must be a hard-coded literal. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .news-link:visited { color: #B0B0B0; }
+  }
+  :root[data-theme="dark"] .news-link:visited { color: #B0B0B0; }
 
   /* Theme toggle button (top-right of page header) */
   .theme-toggle {
