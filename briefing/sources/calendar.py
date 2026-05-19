@@ -26,9 +26,9 @@ def fetch(today: date | None = None) -> SectionResult:
     creds = load_google_credentials()
     service = build("calendar", "v3", credentials=creds, cache_discovery=False)
 
-    today_events = _fetch_day(service, today)
+    today_events = _fetch_day(service, today, now=now, filter_past=True)
     tomorrow = today + timedelta(days=1)
-    tomorrow_events = _fetch_day(service, tomorrow) if show_tomorrow else []
+    tomorrow_events = _fetch_day(service, tomorrow, now=now, filter_past=False) if show_tomorrow else []
 
     return {
         "status": "ready",
@@ -40,8 +40,17 @@ def fetch(today: date | None = None) -> SectionResult:
     }
 
 
-def _fetch_day(service, target_date: date) -> list[dict]:
-    """Fetch and normalize all events for a single calendar day."""
+def _fetch_day(
+    service,
+    target_date: date,
+    now: datetime | None = None,
+    filter_past: bool = False,
+) -> list[dict]:
+    """Fetch and normalize all events for a single calendar day.
+
+    If filter_past is True, timed events that ended more than 2 hours before
+    `now` are dropped. All-day events and error entries are never filtered.
+    """
     start = datetime.combine(target_date, time.min, tzinfo=TIMEZONE)
     end = start + timedelta(days=1)
 
@@ -73,6 +82,19 @@ def _fetch_day(service, target_date: date) -> list[dict]:
 
         for item in resp.get("items", []):
             all_events.append(_normalize(item, cal.label))
+
+    if filter_past and now is not None:
+        cutoff = now - timedelta(hours=2)
+        filtered: list[dict] = []
+        for ev in all_events:
+            if ev.get("is_error") or ev.get("is_all_day"):
+                filtered.append(ev)
+                continue
+            # Use end time if available, fall back to start time.
+            ref_dt = ev.get("_end_dt") or ev.get("_start_dt")
+            if ref_dt is None or ref_dt >= cutoff:
+                filtered.append(ev)
+        all_events = filtered
 
     all_events.sort(key=_sort_key)
     return all_events
@@ -117,6 +139,7 @@ def _normalize(item: dict, calendar_label: str) -> dict:
         "calendar": calendar_label,
         "link": link,
         "_start_dt": start_dt,
+        "_end_dt": end_dt,
     }
 
 
