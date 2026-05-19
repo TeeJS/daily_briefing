@@ -12,6 +12,7 @@ Sections still as sub-stubs (no feeds yet):
 from __future__ import annotations
 
 import logging
+import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -244,7 +245,7 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
     for feed_url in section.feeds:
         parsed = feedparser.parse(feed_url)
         for entry in parsed.entries:
-            link = getattr(entry, "link", "") or ""
+            link = _resolve_url(getattr(entry, "link", "") or "")
             if link and link in seen_links:
                 continue
 
@@ -295,6 +296,28 @@ def _entry_dt(entry: Any) -> datetime | None:
             except (TypeError, ValueError):
                 continue
     return None
+
+
+def _resolve_url(url: str) -> str:
+    """Follow a news.google.com redirect and return the final article URL.
+
+    Uses a HEAD request so no body is downloaded. Falls back to the original
+    URL on any error (timeout, 4xx, etc.) so a bad redirect never drops an item.
+    Only fires for news.google.com links — all other URLs pass through unchanged.
+    """
+    if "news.google.com" not in url:
+        return url
+    try:
+        req = urllib.request.Request(
+            url,
+            method="HEAD",
+            headers={"User-Agent": "Mozilla/5.0 (compatible; DailyBriefing/1.0)"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return resp.url
+    except Exception as exc:
+        log.debug("_resolve_url failed for %s: %s", url, exc)
+        return url
 
 
 def _extract_source(entry: Any) -> str:
