@@ -86,3 +86,8 @@ ETSY_TOKEN_URL = "https://api.etsy.com/v3/public/oauth/token"
 ETSY_SCOPES = "transactions_r"
 ETSY_API_BASE = "https://api.etsy.com/v3/application"
 ETSY_TOKENS_FILE = SECRETS_DIR / "etsy_tokens.json"
+
+# News paywall blocklist — one domain per line, # comments, blank lines ignored.
+# Lives in SECRETS_DIR so it's on the already-mounted RW volume with no new mount needed.
+# On Unraid: /mnt/user/appdata/daily_briefing/secrets/news_paywall_blocklist.txt
+NEWS_BLOCKLIST_FILE = SECRETS_DIR / "news_paywall_blocklist.txt"

@@ -18,9 +18,27 @@ from typing import Any
 
 import feedparser
 
+from briefing.config import NEWS_BLOCKLIST_FILE
 from briefing.sources import SectionResult
 
 log = logging.getLogger(__name__)
+
+
+def _load_paywall_blocklist() -> frozenset[str]:
+    """Load domain blocklist from NEWS_BLOCKLIST_FILE.
+
+    Returns a frozenset of lowercase domain strings. Missing file = empty set
+    (graceful degradation — briefing still runs without the file).
+    """
+    if not NEWS_BLOCKLIST_FILE.exists():
+        return frozenset()
+    domains: list[str] = []
+    for raw in NEWS_BLOCKLIST_FILE.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line and not line.startswith("#"):
+            domains.append(line.lower())
+    log.debug("paywall blocklist: %d domain(s) loaded", len(domains))
+    return frozenset(domains)
 
 DEFAULT_MAX_ITEMS = 4
 
@@ -171,6 +189,7 @@ SECTIONS: tuple[NewsSection, ...] = (
 
 
 def fetch() -> SectionResult:
+    paywall_blocklist = _load_paywall_blocklist()
     out_sections: list[dict[str, Any]] = []
     for section in SECTIONS:
         if not section.feeds:
@@ -179,7 +198,7 @@ def fetch() -> SectionResult:
             )
             continue
         try:
-            items = _pull_section(section)
+            items = _pull_section(section, paywall_blocklist)
             out_sections.append(
                 {
                     "key": section.key,
@@ -206,11 +225,13 @@ def fetch() -> SectionResult:
     return {"status": "ready", "sections": out_sections}
 
 
-def _pull_section(section: NewsSection) -> list[dict[str, Any]]:
+def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
     """Pull from every feed in the section, dedupe by URL, time-filter, sort, cap.
 
     Sort is newest-first by entry pub date. Items without a parseable date sort
     to the end (they still appear unless filtered out by max_age_days).
+    paywall_blocklist: frozenset of lowercase domains; entries whose link contains
+    any listed domain are dropped before capping.
     """
     cutoff: datetime | None = None
     if section.max_age_days is not None:
@@ -233,6 +254,9 @@ def _pull_section(section: NewsSection) -> list[dict[str, Any]]:
 
             source = _extract_source(entry)
             if blocked_lower and any(b in source.lower() for b in blocked_lower):
+                continue
+
+            if paywall_blocklist and any(d in link.lower() for d in paywall_blocklist):
                 continue
 
             if link:
