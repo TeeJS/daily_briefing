@@ -80,10 +80,14 @@ ANTHROPIC_TOKENS_FILE = SECRETS_DIR / "anthropic_tokens.json"
 # (https://www.etsy.com/developers/your-apps). Both required at bootstrap time;
 # read from env at runtime to avoid hardcoding.
 ETSY_CLIENT_ID = os.environ.get("ETSY_CLIENT_ID", "")
+ETSY_CLIENT_SECRET = os.environ.get("ETSY_CLIENT_SECRET", "")
+# Etsy enforces keystring:secret format in x-api-key header as of Feb 2026.
+# All API calls (not the OAuth token endpoint) must use this combined value.
+ETSY_API_KEY = f"{ETSY_CLIENT_ID}:{ETSY_CLIENT_SECRET}"
 ETSY_REDIRECT_URI = os.environ.get("ETSY_REDIRECT_URI", "")
 ETSY_AUTHORIZE_URL = "https://www.etsy.com/oauth/connect"
 ETSY_TOKEN_URL = "https://api.etsy.com/v3/public/oauth/token"
-ETSY_SCOPES = "transactions_r"
+ETSY_SCOPES = "transactions_r shops_r"
 ETSY_API_BASE = "https://api.etsy.com/v3/application"
 ETSY_TOKENS_FILE = SECRETS_DIR / "etsy_tokens.json"
 

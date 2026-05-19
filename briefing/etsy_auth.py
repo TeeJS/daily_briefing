@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
-from briefing.config import ETSY_CLIENT_ID, ETSY_TOKEN_URL, ETSY_TOKENS_FILE
+from briefing.config import ETSY_API_KEY, ETSY_CLIENT_ID, ETSY_TOKEN_URL, ETSY_TOKENS_FILE
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +54,10 @@ def _refresh(tokens: dict[str, Any]) -> dict[str, Any]:
     req = urllib.request.Request(
         ETSY_TOKEN_URL,
         data=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "x-api-key": ETSY_API_KEY,
+        },
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=5) as resp:

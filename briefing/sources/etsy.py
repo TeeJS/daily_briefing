@@ -9,7 +9,7 @@ import urllib.request
 from datetime import datetime, timedelta
 from typing import Any
 
-from briefing.config import ETSY_API_BASE, ETSY_CLIENT_ID, TIMEZONE
+from briefing.config import ETSY_API_BASE, ETSY_API_KEY, ETSY_CLIENT_ID, ETSY_CLIENT_SECRET, TIMEZONE
 from briefing.etsy_auth import get_credentials
 from briefing.sources import SectionResult
 
@@ -22,7 +22,7 @@ def fetch() -> SectionResult:
     # Bail out immediately if Etsy isn't configured yet — normal while awaiting
     # API approval or before running the OAuth bootstrap script.
     from briefing.config import ETSY_TOKENS_FILE
-    if not ETSY_CLIENT_ID:
+    if not ETSY_CLIENT_ID or not ETSY_CLIENT_SECRET:
         return {"status": "stub"}
     if not ETSY_TOKENS_FILE.exists():
         return {"status": "stub"}
@@ -78,7 +78,7 @@ def _fetch_unshipped_receipts(access_token: str, shop_id: int) -> list[dict[str,
         url,
         headers={
             "Authorization": f"Bearer {access_token}",
-            "x-api-key": ETSY_CLIENT_ID,
+            "x-api-key": ETSY_API_KEY,
             "Accept": "application/json",
         },
     )

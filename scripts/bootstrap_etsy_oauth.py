@@ -35,8 +35,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from briefing.config import (
     ETSY_API_BASE,
+    ETSY_API_KEY,
     ETSY_AUTHORIZE_URL,
     ETSY_CLIENT_ID,
+    ETSY_CLIENT_SECRET,
     ETSY_REDIRECT_URI,
     ETSY_SCOPES,
     ETSY_TOKEN_URL,
@@ -78,7 +80,7 @@ def _lookup_shop_id(access_token: str, user_id: str) -> int:
         url,
         headers={
             "Authorization": f"Bearer {access_token}",
-            "x-api-key": ETSY_CLIENT_ID,
+            "x-api-key": ETSY_API_KEY,
             "Accept": "application/json",
         },
     )
@@ -92,10 +94,10 @@ def _lookup_shop_id(access_token: str, user_id: str) -> int:
 
 
 def main() -> int:
-    if not ETSY_CLIENT_ID or not ETSY_REDIRECT_URI:
+    if not ETSY_CLIENT_ID or not ETSY_CLIENT_SECRET or not ETSY_REDIRECT_URI:
         print(
-            "Set ETSY_CLIENT_ID and ETSY_REDIRECT_URI env vars before running.\n"
-            "Register an app at https://www.etsy.com/developers/your-apps to get them.",
+            "Set ETSY_CLIENT_ID, ETSY_CLIENT_SECRET, and ETSY_REDIRECT_URI env vars before running.\n"
+            "All three are available on your app page at https://www.etsy.com/developers/your-apps.",
             file=sys.stderr,
         )
         return 1
