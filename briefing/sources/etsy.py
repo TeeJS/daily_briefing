@@ -30,7 +30,10 @@ def fetch() -> SectionResult:
     access_token, shop_id = get_credentials()
 
     receipts = _fetch_unshipped_receipts(access_token, shop_id)
-    log.info("etsy: %d unshipped paid receipts", len(receipts))
+    # Filter to genuinely active orders only. "completed" receipts can appear with
+    # was_shipped=false when manually closed rather than marked shipped.
+    receipts = [r for r in receipts if r.get("status") == "open"]
+    log.info("etsy: %d open unshipped receipts", len(receipts))
 
     now = datetime.now(TIMEZONE)
     soon_cutoff = now + timedelta(days=DUE_SOON_DAYS)
@@ -123,8 +126,10 @@ def _normalize_receipt(r: dict[str, Any]) -> dict[str, Any]:
 
     message = (r.get("message_from_buyer") or "").strip() or None
 
+    receipt_id = r.get("receipt_id")
     return {
-        "receipt_id": r.get("receipt_id"),
+        "receipt_id": receipt_id,
+        "etsy_url": f"https://www.etsy.com/your/orders/sold/new?order_id={receipt_id}",
         "buyer_name": (r.get("name") or "").split()[0] or "(buyer)",
         "item_count": item_count,
         "titles": titles[:3],
