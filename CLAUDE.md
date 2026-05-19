@@ -97,6 +97,8 @@ Env vars at runtime: `LLM_BASE_URL`, `LLM_MODEL`, `TZ` (defaults `America/Denver
 - **`tzdata` package required** — Windows + minimal Linux images lack the IANA tz db. Listed as a runtime dep in pyproject.
 - **Etsy receipt ship-by date** lives on `transaction.expected_ship_date` (line item), not the receipt. Receipt-level ship-by = `min(expected_ship_date)` across transactions.
 - **Etsy access token format** — `<user_id>.<random>`. We extract `user_id` by splitting on `.` so we don't need extra OAuth scopes to call `getMe`.
+- **Etsy `x-api-key` header** — must be `keystring:secret` (colon-separated), NOT just the keystring. Etsy enforced this Feb 9, 2026. Applies to all API calls (not the OAuth token endpoint). Computed as `ETSY_API_KEY = f"{ETSY_CLIENT_ID}:{ETSY_CLIENT_SECRET}"` in `config.py`. Both env vars required at runtime.
+- **Etsy status strings are title-cased** — the API returns `"Paid"`, `"Canceled"`, `"Completed"`, not lowercase. Always compare with `.lower()`. Active unshipped orders have `status="Paid"`; `status="open"` means unpaid/pending, not active.
 - **Anthropic `/api/oauth/usage` rate limit** — ~24h backoff if hit too fast. Minimum 300s. The daily briefing is well under, but never put it on a fast retry loop.
 
 ## Memory files (deeper context)
