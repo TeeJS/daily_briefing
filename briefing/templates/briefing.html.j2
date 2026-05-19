@@ -171,38 +171,46 @@
 
   <!-- ===== Section macros: each renders ONE section's content ===== -->
 
-  {%- macro cal_block(calendar) %}
-    {{ section_header("📅", "Today's Schedule") }}
-    {% if calendar.status == "ready" %}
-      {% if not calendar.events %}
-        <div style="padding:8px 0;color:var(--fg-3);font-size:14px;">Nothing on the calendar today.</div>
-      {% else %}
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;">
-          {% for ev in calendar.events %}
-          <tr>
-            <td style="padding:4px 8px 4px 0;vertical-align:top;color:var(--fg-2);white-space:nowrap;">
-              {%- if ev.is_error -%}<span style="color:var(--error);">error</span>{%- else -%}{{ ev.time_str }}{%- endif -%}
-            </td>
-            <td style="padding:4px 0;vertical-align:top;">
-              {%- if ev.is_error -%}
-                <span style="color:var(--error);">{{ ev.calendar }}: {{ ev.error }}</span>
-              {%- elif ev.link -%}
-                <a href="{{ ev.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
-                  <div style="font-weight:500;color:var(--fg);">{{ ev.summary }}</div>
-                  <div style="font-size:12px;color:var(--fg-4);margin-top:2px;">
-                    {{ ev.calendar }}{% if ev.location %} &middot; {{ ev.location }}{% endif %}
-                  </div>
-                </a>
-              {%- else -%}
+  {%- macro event_table(events, empty_msg) %}
+    {% if not events %}
+      <div style="padding:8px 0;color:var(--fg-3);font-size:14px;">{{ empty_msg }}</div>
+    {% else %}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+        {% for ev in events %}
+        <tr>
+          <td style="padding:4px 8px 4px 0;vertical-align:top;color:var(--fg-2);white-space:nowrap;">
+            {%- if ev.is_error -%}<span style="color:var(--error);">error</span>{%- else -%}{{ ev.time_str }}{%- endif -%}
+          </td>
+          <td style="padding:4px 0;vertical-align:top;">
+            {%- if ev.is_error -%}
+              <span style="color:var(--error);">{{ ev.calendar }}: {{ ev.error }}</span>
+            {%- elif ev.link -%}
+              <a href="{{ ev.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
                 <div style="font-weight:500;color:var(--fg);">{{ ev.summary }}</div>
                 <div style="font-size:12px;color:var(--fg-4);margin-top:2px;">
                   {{ ev.calendar }}{% if ev.location %} &middot; {{ ev.location }}{% endif %}
                 </div>
-              {%- endif -%}
-            </td>
-          </tr>
-          {% endfor %}
-        </table>
+              </a>
+            {%- else -%}
+              <div style="font-weight:500;color:var(--fg);">{{ ev.summary }}</div>
+              <div style="font-size:12px;color:var(--fg-4);margin-top:2px;">
+                {{ ev.calendar }}{% if ev.location %} &middot; {{ ev.location }}{% endif %}
+              </div>
+            {%- endif -%}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro cal_block(calendar) %}
+    {{ section_header("📅", "Today's Schedule") }}
+    {% if calendar.status == "ready" %}
+      {{ event_table(calendar.events, "Nothing on the calendar today.") }}
+      {% if calendar.show_tomorrow %}
+        <div style="margin-top:16px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--fg-3);text-transform:uppercase;letter-spacing:0.05em;">Tomorrow</div>
+        {{ event_table(calendar.tomorrow_events, "Nothing on the calendar tomorrow.") }}
       {% endif %}
     {% elif calendar.status == "error" %}
       <div style="padding:8px 0;color:var(--error);font-size:13px;">Calendar fetch failed: {{ calendar.error }}</div>

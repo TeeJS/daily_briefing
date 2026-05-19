@@ -2,6 +2,9 @@
 
 Returns events from the 6 calendars in `config.INCLUDED_CALENDARS`. All-day events
 come first, then timed events sorted by start. Times are rendered in `config.TIMEZONE`.
+
+If the briefing runs after noon (local time), tomorrow's events are also fetched
+and included in the result under `tomorrow_events`.
 """
 
 from __future__ import annotations
@@ -16,12 +19,31 @@ from briefing.sources import SectionResult
 
 
 def fetch(today: date | None = None) -> SectionResult:
-    today = today or datetime.now(TIMEZONE).date()
-    start = datetime.combine(today, time.min, tzinfo=TIMEZONE)
-    end = start + timedelta(days=1)
+    now = datetime.now(TIMEZONE)
+    today = today or now.date()
+    show_tomorrow = now.time() >= time(12, 0)
 
     creds = load_google_credentials()
     service = build("calendar", "v3", credentials=creds, cache_discovery=False)
+
+    today_events = _fetch_day(service, today)
+    tomorrow = today + timedelta(days=1)
+    tomorrow_events = _fetch_day(service, tomorrow) if show_tomorrow else []
+
+    return {
+        "status": "ready",
+        "events": today_events,
+        "date": today,
+        "show_tomorrow": show_tomorrow,
+        "tomorrow_events": tomorrow_events,
+        "tomorrow_date": tomorrow if show_tomorrow else None,
+    }
+
+
+def _fetch_day(service, target_date: date) -> list[dict]:
+    """Fetch and normalize all events for a single calendar day."""
+    start = datetime.combine(target_date, time.min, tzinfo=TIMEZONE)
+    end = start + timedelta(days=1)
 
     all_events: list[dict] = []
     for cal in INCLUDED_CALENDARS:
@@ -53,8 +75,7 @@ def fetch(today: date | None = None) -> SectionResult:
             all_events.append(_normalize(item, cal.label))
 
     all_events.sort(key=_sort_key)
-
-    return {"status": "ready", "events": all_events, "date": today}
+    return all_events
 
 
 def _normalize(item: dict, calendar_label: str) -> dict:
