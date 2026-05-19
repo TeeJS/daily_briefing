@@ -19,6 +19,14 @@ DUE_SOON_DAYS = 3
 
 
 def fetch() -> SectionResult:
+    # Bail out immediately if Etsy isn't configured yet — normal while awaiting
+    # API approval or before running the OAuth bootstrap script.
+    from briefing.config import ETSY_TOKENS_FILE
+    if not ETSY_CLIENT_ID:
+        return {"status": "stub"}
+    if not ETSY_TOKENS_FILE.exists():
+        return {"status": "stub"}
+
     access_token, shop_id = get_credentials()
 
     receipts = _fetch_unshipped_receipts(access_token, shop_id)

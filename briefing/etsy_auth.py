@@ -57,7 +57,7 @@ def _refresh(tokens: dict[str, Any]) -> dict[str, Any]:
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
+    with urllib.request.urlopen(req, timeout=5) as resp:
         data = json.loads(resp.read())
     if "access_token" not in data:
         raise RuntimeError(f"Etsy refresh response missing access_token: {data}")
