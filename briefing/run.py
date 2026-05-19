@@ -14,7 +14,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from briefing.config import BRIEFINGS_DIR, LOGS_DIR, TIMEZONE
-from briefing.render import render
+from briefing.render import render, render_index
 from briefing.sources import (
     calendar as calendar_source,
     claude_usage as claude_usage_source,
@@ -22,6 +22,12 @@ from briefing.sources import (
     etsy as etsy_source,
     news as news_source,
 )
+
+# Robots.txt content — block all search engines from indexing the briefing.
+# Briefings contain personal data (calendar entries, customer names, email
+# senders/subjects). Authentication on the proxy is the real gate; this is
+# defense-in-depth against well-behaved crawlers.
+ROBOTS_TXT = "User-agent: *\nDisallow: /\n"
 
 
 def _setup_logging() -> None:
@@ -84,10 +90,30 @@ def main() -> int:
     # <title> tag; nothing outside the renderer needs it anymore.
     _, html = render(sections, today)
 
+    # Write the dated archive copy at /YYYY/MM/DD.html — the permanent address.
     archive = _archive_path(today)
     archive.parent.mkdir(parents=True, exist_ok=True)
     archive.write_text(html, encoding="utf-8")
     log.info("wrote briefing to %s", archive)
+
+    # Write today.html — the "latest" pointer at the root of the served site.
+    # Same content, overwritten each morning.
+    today_path = BRIEFINGS_DIR / "today.html"
+    today_path.write_text(html, encoding="utf-8")
+    log.info("wrote today pointer to %s", today_path)
+
+    # Regenerate the archive index (year → month → days, newest first) so
+    # the new briefing shows up in the listing.
+    index_html = render_index(BRIEFINGS_DIR)
+    index_path = BRIEFINGS_DIR / "index.html"
+    index_path.write_text(index_html, encoding="utf-8")
+    log.info("wrote archive index to %s", index_path)
+
+    # Idempotent — same content every run. Cheaper to overwrite than to check.
+    robots_path = BRIEFINGS_DIR / "robots.txt"
+    robots_path.write_text(ROBOTS_TXT, encoding="utf-8")
+    log.info("wrote robots.txt to %s", robots_path)
+
     return 0
 
 

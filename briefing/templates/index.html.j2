@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Daily Briefing — Archive</title>
+
+<style>
+  /* Palette + dark-mode setup matches briefing.html.j2.
+     Kept inline (duplicated) so each rendered file is fully self-contained. */
+
+  :root {
+    --bg:          #f5f5f5;
+    --fg:          #222;
+    --fg-2:        #444;
+    --fg-3:        #666;
+    --fg-4:        #888;
+    --fg-5:        #999;
+    --header-bg:   #222;
+    --header-fg:   #fff;
+    --border:      #ddd;
+    --border-strong: #222;
+    --link:        #1a4d99;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --bg:          #121212;
+      --fg:          #E0E0E0;
+      --fg-2:        #C0C0C0;
+      --fg-3:        #A0A0A0;
+      --fg-4:        #909090;
+      --fg-5:        #808080;
+      --header-bg:   #2c2941;
+      --header-fg:   #b0b0b0;
+      --border:      #444444;
+      --border-strong: #444444;
+      --link:        #7b79af;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:          #121212;
+    --fg:          #E0E0E0;
+    --fg-2:        #C0C0C0;
+    --fg-3:        #A0A0A0;
+    --fg-4:        #909090;
+    --fg-5:        #808080;
+    --header-bg:   #2c2941;
+    --header-fg:   #b0b0b0;
+    --border:      #444444;
+    --border-strong: #444444;
+    --link:        #7b79af;
+  }
+
+  .theme-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--fg-3);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.2;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .theme-toggle:hover { color: var(--fg); border-color: var(--fg-3); }
+
+  .theme-toggle .icon-light { display: none; }
+  .theme-toggle .icon-dark  { display: inline; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .theme-toggle .icon-dark  { display: none; }
+    :root:not([data-theme]) .theme-toggle .icon-light { display: inline; }
+  }
+  :root[data-theme="dark"] .theme-toggle .icon-dark  { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-light { display: inline; }
+  :root[data-theme="light"] .theme-toggle .icon-dark  { display: inline; }
+  :root[data-theme="light"] .theme-toggle .icon-light { display: none; }
+
+  /* Archive-specific layout */
+  .year-group { margin-bottom: 32px; }
+  .year-heading {
+    margin: 24px 0 8px;
+    padding: 6px 10px;
+    background-color: var(--header-bg);
+    color: var(--header-fg);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 4px;
+  }
+  .month-heading {
+    margin: 16px 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg-2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .day-list { margin: 0; padding: 0 0 0 18px; list-style: disc; }
+  .day-list li { margin: 3px 0; line-height: 1.4; font-size: 14px; color: var(--fg); }
+  .day-list a { color: var(--link); text-decoration: none; }
+  .day-list a:hover { text-decoration: underline; }
+  .day-list .weekday { color: var(--fg-4); font-size: 12px; margin-left: 6px; }
+  .empty-note { padding: 24px 0; color: var(--fg-3); font-style: italic; text-align: center; }
+</style>
+
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', saved);
+      }
+    } catch (e) {}
+  })();
+  function toggleTheme() {
+    var root = document.documentElement;
+    var current = root.getAttribute('data-theme');
+    if (!current) {
+      current = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var next = current === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</head>
+<body style="margin:0;padding:0;background-color:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--fg);">
+<div style="max-width:720px;margin:0 auto;padding:24px 16px;">
+
+  <div style="border-bottom:2px solid var(--border-strong);padding-bottom:12px;margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
+    <div>
+      <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em;color:var(--fg);">Briefing Archive</h1>
+      <div style="margin-top:4px;font-size:14px;color:var(--fg-3);">
+        {{ entry_count }} briefing{% if entry_count != 1 %}s{% endif %} &middot;
+        <a href="/today.html" style="color:var(--link);text-decoration:none;">Today's briefing →</a>
+      </div>
+    </div>
+    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+      <span class="icon-dark">🌙</span><span class="icon-light">☀</span>
+    </button>
+  </div>
+
+  {% if not archive %}
+    <div class="empty-note">No briefings yet — check back after the next 6 AM run.</div>
+  {% else %}
+    {% for year, months in archive %}
+      <div class="year-group">
+        <div class="year-heading">{{ year }}</div>
+        {% for month_num, month_name, days in months %}
+          <div class="month-heading">{{ month_name }}</div>
+          <ul class="day-list">
+            {% for day, weekday, url in days %}
+              <li><a href="{{ url }}">{{ month_name }} {{ day }}</a><span class="weekday">{{ weekday }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--fg-5);text-align:center;">
+    Updated {{ generated_at }}
+  </div>
+
+</div>
+</body>
+</html>

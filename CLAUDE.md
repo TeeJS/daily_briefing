@@ -4,9 +4,23 @@ Context for future Claude Code sessions working on this repo. Read this first.
 
 ## What this is
 
-A scheduled daily briefing rendered as a static HTML file. Runs in a Docker container on Unraid (`noraid.schmitzplex.com`) at 6 AM MT, pulls data from 5 sources, and writes one self-contained HTML document to `/mnt/user/appdata/daily_briefing/briefings/YYYY/MM/DD.html`. The reverse proxy serves that directory at `briefing.schmitzplex.com`. **No email is sent** — the Google OAuth grant is read-only (calendar + inbox view) and the job has no send/modify authority anywhere.
+A scheduled daily briefing rendered as a static HTML file. Runs in a Docker container on Unraid (`noraid.schmitzplex.com`) at 6 AM MT, pulls data from 5 sources, and writes one self-contained HTML document to `/mnt/user/data/websites/briefing/YYYY/MM/DD.html`. An always-on `nginx:alpine` container serves that directory on port 8181; NPMPlus proxies `briefing.schmitzplex.com` to it with basic auth. **No email is sent** — the Google OAuth grant is read-only (calendar + inbox view) and the job has no send/modify authority anywhere.
 
 User: TJ Schmitz (teejschmitz@gmail.com), running on Windows 11.
+
+## Hosting topology
+
+Three components on noraid:
+
+1. **Daily generator** (this repo's container) — runs once/day via Unraid User Scripts cron at 6 AM MT, writes today's HTML + updates `index.html` / `today.html` / `robots.txt`, exits.
+2. **Static webserver** — `nginx:alpine` container, always on, mounts `/mnt/user/data/websites/briefing` read-only at `/usr/share/nginx/html`, listens on host port 8181.
+3. **NPMPlus** — terminates HTTPS for `briefing.schmitzplex.com`, applies basic auth, forwards to `localhost:8181`.
+
+Generated outputs in the briefings volume:
+- `YYYY/MM/DD.html` — permanent dated archive
+- `today.html` — latest pointer, overwritten each morning
+- `index.html` — archive listing grouped by year → month (newest first)
+- `robots.txt` — `Disallow: /` (defense-in-depth alongside basic auth)
 
 ## Repo layout
 
@@ -26,7 +40,8 @@ briefing/                  Python package (the actual code)
     etsy.py                Full
     news.py                v1: 3 of 7 subsections via RSS; 4 sub-stubs
   templates/
-    briefing.html.j2       Email + future-static-site HTML
+    briefing.html.j2       Per-day briefing HTML (responsive, dark mode)
+    index.html.j2          Archive index (year/month groups, newest first)
 
 scripts/
   bootstrap_google_oauth.py     One-time browser auth
@@ -43,7 +58,7 @@ Dockerfile                 python:3.12-slim base
 
 Each `fetch()` returns a dict with a `status` field: `"ready"` | `"stub"` | `"error"`. The template handles all three branches per section.
 
-After gathering: `render.render(sections, today)` produces `(subject, html)` — the subject is embedded in the HTML `<title>` and otherwise unused. The HTML is written to the archive path (`briefings/YYYY/MM/DD.html`). That file is the final deliverable; the reverse proxy serves the archive directory directly.
+After gathering: `render.render(sections, today)` produces `(subject, html)` — the subject is embedded in the HTML `<title>` and otherwise unused. The HTML is written to the archive path (`/YYYY/MM/DD.html`), copied to `/today.html`, and `render.render_index()` walks the briefings dir to regenerate `/index.html`. `/robots.txt` is also rewritten each run (idempotent). The nginx container serves the whole directory at `briefing.schmitzplex.com`.
 
 ## OAuth: three bootstraps, one pattern
 
@@ -111,7 +126,8 @@ python -m briefing.run
 
 ## Conventions
 
-- Inline CSS only in the template (Gmail-safe). System font stack. 720px max width, 2-column layout above the news section.
+- Inline CSS in the template (originally Gmail-safe, kept for self-contained HTML). CSS variables drive light/dark mode; a `<style>` block in `<head>` defines the palette and responsive grid (640px breakpoint). System font stack. 720px max content width.
 - Section macros in the template are pure: data in, HTML out.
+- `:visited` rules MUST use hard-coded color literals, not `var()` — Chromium blocks CSS variable resolution inside `:visited` as anti-history-sniffing. (Chrome 136+ also partitions `:visited` by top-level site, so `file://` won't show visited styling at all — only `https://briefing.schmitzplex.com` exhibits the expected behavior.)
 - No tests yet. If logic gets complex enough that a regression would be hard to spot, add them — but most of this is glue code where a smoke test (`--dry-run`) catches breakage.
 - Don't add CLI flags or env vars without need. Anything new should have a clear caller.
