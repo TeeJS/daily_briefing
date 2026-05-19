@@ -12,7 +12,6 @@ Sections still as sub-stubs (no feeds yet):
 from __future__ import annotations
 
 import logging
-import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -299,25 +298,25 @@ def _entry_dt(entry: Any) -> datetime | None:
 
 
 def _resolve_url(url: str) -> str:
-    """Follow a news.google.com redirect and return the final article URL.
+    """Decode a news.google.com RSS article URL to the real article URL.
 
-    Uses a HEAD request so no body is downloaded. Falls back to the original
-    URL on any error (timeout, 4xx, etc.) so a bad redirect never drops an item.
-    Only fires for news.google.com links — all other URLs pass through unchanged.
+    Google News wraps all RSS links in a news.google.com/rss/articles/... URL
+    that requires a two-step server exchange to decode (fetch page for signature,
+    then POST to batchexecute). googlenewsdecoder handles this transparently.
+    Non-Google-News URLs pass through unchanged. Falls back to the original URL
+    on any error so a failed decode never drops an article.
     """
     if "news.google.com" not in url:
         return url
     try:
-        req = urllib.request.Request(
-            url,
-            method="HEAD",
-            headers={"User-Agent": "Mozilla/5.0 (compatible; DailyBriefing/1.0)"},
-        )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return resp.url
+        from googlenewsdecoder import gnewsdecoder
+        result = gnewsdecoder(url, interval=1)
+        if result.get("status"):
+            return result["decoded_url"]
+        log.debug("_resolve_url decode failed for %s: %s", url, result.get("message"))
     except Exception as exc:
-        log.debug("_resolve_url failed for %s: %s", url, exc)
-        return url
+        log.debug("_resolve_url error for %s: %s", url, exc)
+    return url
 
 
 def _extract_source(entry: Any) -> str:

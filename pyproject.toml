@@ -22,6 +22,9 @@ dependencies = [
     "openai>=1.50",
     # RSS / Atom parsing for the news digest.
     "feedparser>=6.0",
+    # Decodes news.google.com redirect URLs to real article URLs via Google's
+    # batchexecute endpoint (two HTTP calls per URL, no headless browser needed).
+    "googlenewsdecoder>=0.1.7",
 ]
 
 [project.optional-dependencies]
