@@ -60,6 +60,7 @@ def fetch() -> SectionResult:
         "status": "ready",
         "overdue": overdue,
         "due_soon": due_soon,
+        "other": other,
         "other_count": len(other),
         "other_total_dollars": round(sum(r.get("total_dollars") or 0 for r in other), 2),
     }
@@ -101,12 +102,36 @@ def _normalize_receipt(r: dict[str, Any]) -> dict[str, Any]:
     item_count = sum(t.get("quantity", 0) for t in transactions)
     titles = [t.get("title", "") for t in transactions if t.get("title")]
 
+    # Collect unique variations across all transactions (e.g. "finish: painted").
+    # Etsy returns variations as a list on each transaction; field names are snake_case
+    # in the JSON response (formatted_name / formatted_value).
+    seen_vars: set[str] = set()
+    variations: list[str] = []
+    for t in transactions:
+        for v in t.get("variations") or []:
+            name = (v.get("formatted_name") or v.get("property_name") or "").strip()
+            value = (v.get("formatted_value") or "").strip()
+            pair = f"{name}: {value}" if name else value
+            if pair and pair not in seen_vars:
+                seen_vars.add(pair)
+                variations.append(pair)
+
+    # Ship-to: city, state for US orders; falls back to whatever fields are populated.
+    city = (r.get("city") or "").strip()
+    state = (r.get("state") or "").strip()
+    ship_to = ", ".join(p for p in [city, state] if p) or None
+
+    message = (r.get("message_from_buyer") or "").strip() or None
+
     return {
         "receipt_id": r.get("receipt_id"),
         "buyer_name": (r.get("name") or "").split()[0] or "(buyer)",
         "item_count": item_count,
         "titles": titles[:3],
         "more_titles": max(0, len(titles) - 3),
+        "variations": variations,
+        "ship_to": ship_to,
+        "message_from_buyer": message,
         "ship_by_dt": ship_by_dt,
         "ship_by_str": _fmt_ship_by(ship_by_dt),
         "total_dollars": total,

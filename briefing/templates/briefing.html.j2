@@ -297,15 +297,19 @@
         <tr>
           <td style="padding:4px 0;vertical-align:top;font-size:14px;color:var(--fg);">
             <div style="font-size:11px;color:{{ label_color }};text-transform:uppercase;letter-spacing:0.05em;">{{ label_text }}</div>
-            <div style="font-weight:500;">#{{ o.receipt_id }} &middot; {{ o.buyer_name }} &middot; ${{ "%.2f"|format(o.total_dollars or 0) }}</div>
+            <div style="font-weight:500;">#{{ o.receipt_id }} &middot; {{ o.buyer_name }}{% if o.ship_to %} &middot; {{ o.ship_to }}{% endif %} &middot; ${{ "%.2f"|format(o.total_dollars or 0) }}</div>
             <div style="font-size:12px;color:var(--fg-3);margin-top:1px;">
               {{ o.item_count }} item{% if o.item_count != 1 %}s{% endif %}
               {%- if o.titles %} — {{ o.titles | join("; ") }}{% if o.more_titles %} +{{ o.more_titles }} more{% endif %}{% endif -%}
+              {%- if o.variations %} ({{ o.variations | join(", ") }}){% endif -%}
             </div>
+            {%- if o.message_from_buyer %}
+            <div style="font-size:12px;color:var(--fg-3);margin-top:2px;font-style:italic;">✉ {{ o.message_from_buyer }}</div>
+            {%- endif %}
           </td>
         </tr>
       {%- endmacro %}
-      {% if not etsy.overdue and not etsy.due_soon and not etsy.other_count %}
+      {% if not etsy.overdue and not etsy.due_soon and not etsy.other %}
         <div style="padding:8px 0;color:var(--fg-3);font-size:14px;">✓ All orders shipped.</div>
       {% else %}
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
@@ -317,10 +321,9 @@
             <tr><td style="padding:12px 0 4px;font-size:12px;font-weight:600;color:var(--warn);text-transform:uppercase;letter-spacing:0.05em;">Due soon ({{ etsy.due_soon | length }})</td></tr>
             {% for o in etsy.due_soon %}{{ order_row(o, "var(--warn)", "ship by " ~ o.ship_by_str) }}{% endfor %}
           {% endif %}
-          {% if etsy.other_count %}
-            <tr><td style="padding:12px 0 4px;font-size:12px;color:var(--fg-3);">
-              + {{ etsy.other_count }} other outstanding (${{ "%.2f"|format(etsy.other_total_dollars) }} total)
-            </td></tr>
+          {% if etsy.other %}
+            <tr><td style="padding:{% if etsy.overdue or etsy.due_soon %}12{% else %}8{% endif %}px 0 4px;font-size:12px;font-weight:600;color:var(--fg-2);text-transform:uppercase;letter-spacing:0.05em;">Upcoming ({{ etsy.other | length }})</td></tr>
+            {% for o in etsy.other %}{{ order_row(o, "var(--fg-3)", "ship by " ~ o.ship_by_str) }}{% endfor %}
           {% endif %}
         </table>
       {% endif %}
