@@ -59,6 +59,7 @@ def fetch() -> SectionResult:
 
     overdue.sort(key=lambda r: r.get("ship_by_dt") or now)
     due_soon.sort(key=lambda r: r.get("ship_by_dt") or now)
+    other.sort(key=lambda r: r.get("ship_by_dt") or datetime(9999, 12, 31, tzinfo=TIMEZONE))
 
     return {
         "status": "ready",
