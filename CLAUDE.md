@@ -75,9 +75,7 @@ Anthropic uses the public client_id from the `trickv/hass-claude-usage` HA integ
 
 ## LLM access
 
-`briefing/llm.py` uses the OpenAI Python SDK with `base_url=LLM_BASE_URL` (default `http://lite.schmitzplex.com:4000/v1`). LiteLLM routes to a llama.cpp backend on `192.168.1.95:8080`. The model name comes from `LLM_MODEL` env (set per-deployment to whatever LiteLLM advertises).
-
-`chat_json()` asks for `response_format={"type": "json_object"}` — works on LiteLLM-proxied OpenAI-compatible backends. If a backend doesn't honor it, the JSON parse will raise `ValueError` and email triage falls back to top-5-as-FYI (see `sources/email.py`).
+**LLM has been dropped (2026-05-19).** `LLM_BASE_URL` and `LLM_MODEL` are dead env vars — do not add them to the Unraid User Scripts run command. `briefing/llm.py` and its callers remain in the codebase but are unused at runtime.
 
 ## Container conventions
 
@@ -88,7 +86,7 @@ Image contains only Python + deps. **No state** in the image. All state lives in
 
 Container is **ephemeral** — `docker run --rm` once per day, exits when done.
 
-Env vars at runtime: `LLM_BASE_URL`, `LLM_MODEL`, `TZ` (defaults `America/Denver`), `ETSY_CLIENT_ID` (needed during refresh).
+Env vars at runtime: `TZ` (defaults `America/Denver`), `ETSY_CLIENT_ID`, `ETSY_CLIENT_SECRET` (both needed during Etsy token refresh), `FRESHSERVICE_DOMAIN`, `FRESHSERVICE_APIKEY`. **`LLM_BASE_URL` and `LLM_MODEL` are dropped — do not include them.**
 
 ## Known gotchas
 
