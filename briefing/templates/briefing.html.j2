@@ -334,6 +334,38 @@
     {% endif %}
   {%- endmacro %}
 
+  {%- macro freshservice_block(fs) %}
+    {{ section_header("🎫", "Freshservice — Unassigned") }}
+    {% if fs.status == "ready" %}
+      {% if not fs.tickets %}
+        <div style="padding:8px 0;color:var(--fg-3);font-size:14px;">✓ No unassigned tickets.</div>
+      {% else %}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+          {% for t in fs.tickets %}
+          <tr>
+            <td style="padding:4px 0 6px;vertical-align:top;">
+              <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:11px;font-weight:700;padding:1px 5px;border-radius:3px;background-color:{% if t.group_label == 'T' %}var(--link){% else %}var(--warn){% endif %};color:{% if t.group_label == 'T' %}#fff{% else %}#000{% endif %};">{{ t.group_label }}</span>
+                <a href="{{ t.url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:600;">#{{ t.id }}</a>
+                <span style="color:var(--fg);">{{ t.subject }}</span>
+              </div>
+              <div style="font-size:12px;color:var(--fg-3);margin-top:2px;">
+                <span style="color:{% if t.priority == 4 %}var(--error){% elif t.priority == 3 %}var(--warn){% else %}var(--fg-3){% endif %};">{{ t.priority_str }}</span>
+                &middot; {{ t.status_str }}
+                &middot; opened {{ t.created_str }}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    {% elif fs.status == "error" %}
+      <div style="padding:8px 0;color:var(--error);font-size:13px;">Freshservice fetch failed: {{ fs.error }}</div>
+    {% else %}
+      {{ stub_block("Freshservice") }}
+    {% endif %}
+  {%- endmacro %}
+
   {%- macro news_subsection(sub) %}
     <h3 style="margin:12px 0 4px;font-size:12px;font-weight:600;color:var(--fg-2);text-transform:uppercase;letter-spacing:0.05em;">{{ sub.title }}</h3>
     {% if sub.status == "ready" %}
@@ -403,7 +435,11 @@
     <div>{{ etsy_block(etsy) }}</div>
   </div>
 
-  <!-- ===== Row 3: News (full width, internal 2-col for subsections) ===== -->
+  <!-- ===== Row 3: Freshservice unassigned tickets (full width) ===== -->
+
+  <div style="margin-bottom:24px;">{{ freshservice_block(freshservice) }}</div>
+
+  <!-- ===== Row 4: News (full width, internal 2-col for subsections) ===== -->
 
   <div style="margin-bottom:24px;">{{ news_block(news) }}</div>
 

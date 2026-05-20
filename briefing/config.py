@@ -91,6 +91,13 @@ ETSY_SCOPES = "transactions_r shops_r"
 ETSY_API_BASE = "https://api.etsy.com/v3/application"
 ETSY_TOKENS_FILE = SECRETS_DIR / "etsy_tokens.json"
 
+# Freshservice — unassigned ticket monitor.
+# Domain: just the hostname, e.g. "northwestpipecompany.freshservice.com"
+# API key: from Freshservice profile → API settings.
+# Both are required at runtime; the section stubs itself gracefully if either is missing.
+FRESHSERVICE_DOMAIN = os.environ.get("FRESHSERVICE_DOMAIN", "")
+FRESHSERVICE_APIKEY = os.environ.get("FRESHSERVICE_APIKEY", "")
+
 # News paywall blocklist — one domain per line, # comments, blank lines ignored.
 # Lives in SECRETS_DIR so it's on the already-mounted RW volume with no new mount needed.
 # On Unraid: /mnt/user/appdata/daily_briefing/secrets/news_paywall_blocklist.txt

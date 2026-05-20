@@ -20,6 +20,7 @@ from briefing.sources import (
     claude_usage as claude_usage_source,
     email as email_source,
     etsy as etsy_source,
+    freshservice as freshservice_source,
     news as news_source,
 )
 
@@ -55,6 +56,7 @@ def _gather_sections(today: date, log: logging.Logger) -> dict[str, dict]:
         "email": email_source.fetch,
         "claude_usage": claude_usage_source.fetch,
         "etsy": etsy_source.fetch,
+        "freshservice": freshservice_source.fetch,
         "news": news_source.fetch,
     }
     out: dict[str, dict] = {}
