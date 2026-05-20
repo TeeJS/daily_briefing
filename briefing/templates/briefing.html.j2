@@ -421,11 +421,14 @@
     </button>
   </div>
 
-  <!-- ===== Row 1: Calendar | Unread/Important Emails (the two long sections) ===== -->
+  <!-- ===== Row 1: Calendar | Email + Freshservice (stacked in right column) ===== -->
 
   <div class="cols" style="margin-bottom:24px;">
     <div>{{ cal_block(calendar) }}</div>
-    <div>{{ email_block(email) }}</div>
+    <div>
+      {{ email_block(email) }}
+      <div style="margin-top:24px;">{{ freshservice_block(freshservice) }}</div>
+    </div>
   </div>
 
   <!-- ===== Row 2: Claude Usage | Etsy Orders (the two short sections) ===== -->
@@ -435,11 +438,7 @@
     <div>{{ etsy_block(etsy) }}</div>
   </div>
 
-  <!-- ===== Row 3: Freshservice unassigned tickets (full width) ===== -->
-
-  <div style="margin-bottom:24px;">{{ freshservice_block(freshservice) }}</div>
-
-  <!-- ===== Row 4: News (full width, internal 2-col for subsections) ===== -->
+  <!-- ===== Row 3: News (full width, internal 2-col for subsections) ===== -->
 
   <div style="margin-bottom:24px;">{{ news_block(news) }}</div>
 
