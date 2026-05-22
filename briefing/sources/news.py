@@ -12,6 +12,7 @@ Sections still as sub-stubs (no feeds yet):
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -261,6 +262,9 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
                 continue
 
             source = _extract_source(entry) or feed_title
+            # html2rss bridges embed the feed name in the entry source title,
+            # e.g. "The Register · Google News - SAP" → strip to "The Register"
+            source = re.sub(r"\s*·\s*Google News.*$", "", source).strip()
             if blocked_lower and any(b in source.lower() for b in blocked_lower):
                 continue
 
