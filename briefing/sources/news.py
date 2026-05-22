@@ -247,6 +247,9 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
 
     for feed_url in section.feeds:
         parsed = feedparser.parse(feed_url)
+        # Feed-level title as fallback source label for feeds that don't embed
+        # per-entry <source> tags (direct RSS feeds vs Google News-wrapped feeds).
+        feed_title = (getattr(parsed.feed, "title", None) or "").strip()
         for entry in parsed.entries:
             # Dedup on the raw (possibly wrapped) link — cheap, no HTTP calls.
             raw_link = getattr(entry, "link", "") or ""
@@ -257,7 +260,7 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
             if cutoff is not None and (pub is None or pub < cutoff):
                 continue
 
-            source = _extract_source(entry)
+            source = _extract_source(entry) or feed_title
             if blocked_lower and any(b in source.lower() for b in blocked_lower):
                 continue
 
