@@ -72,6 +72,7 @@ class NewsSection:
     max_age_days: int | None = None
     blocked_sources: tuple[str, ...] = field(default_factory=tuple)
     sort_by_date: bool = False
+    show_source: bool = True   # set False for single-source feeds where the label is redundant
 
 
 SECTIONS: tuple[NewsSection, ...] = (
@@ -166,6 +167,7 @@ SECTIONS: tuple[NewsSection, ...] = (
         title="LDS Church Newsroom",
         # Reverse-discovered: WordPress-style feed. Confirm in production; if 404, swap.
         feeds=("https://newsroom.churchofjesuschrist.org/rss",),
+        show_source=False,  # all items are from the same source — label is redundant
     ),
     NewsSection(
         key="ai",
@@ -261,7 +263,7 @@ def _pull_section(section: NewsSection, paywall_blocklist: frozenset[str] = froz
             if cutoff is not None and (pub is None or pub < cutoff):
                 continue
 
-            source = _extract_source(entry) or feed_title
+            source = (_extract_source(entry) or feed_title) if section.show_source else ""
             # html2rss bridges embed the feed name in the entry source title,
             # e.g. "The Register · Google News - SAP" → strip to "The Register"
             source = re.sub(r"\s*·\s*Google News.*$", "", source).strip()
