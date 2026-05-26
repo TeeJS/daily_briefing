@@ -72,25 +72,14 @@ def _fetch_json() -> dict[str, Any]:
 
 
 def _normalize(e: dict[str, Any]) -> dict[str, Any]:
-    days: list[str] = e.get("days") or []
-    days_str = _fmt_days(days)
+    # days is a plain string — e.g. "Fri Sat", "6/4", "6/11-6/27"
+    days = (e.get("days") or "").strip()
 
     return {
         "title": (e.get("title") or "").strip(),
-        "days": days,
-        "days_str": days_str,
+        "days_str": days,
         "time": (e.get("time") or "").strip(),
         "type": (e.get("type") or "").strip(),
         "cost": (e.get("cost") or "").strip(),
         "url": (e.get("url") or "").strip(),
     }
-
-
-def _fmt_days(days: list[str]) -> str:
-    if not days:
-        return ""
-    if len(days) == 1:
-        return days[0]
-    if len(days) == 2:
-        return f"{days[0]} & {days[1]}"
-    return ", ".join(days[:-1]) + f" & {days[-1]}"
