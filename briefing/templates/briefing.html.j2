@@ -409,6 +409,46 @@
     {% endif %}
   {%- endmacro %}
 
+  {%- macro events_block(events) %}
+    {{ section_header("🎟️", "Events This Week") }}
+    {% if events.status == "ready" %}
+      {% if not events.venues %}
+        <div style="padding:8px 0;color:var(--fg-3);font-size:14px;">No events found for the week of {{ events.week_of }}.</div>
+      {% else %}
+        {% for venue in events.venues %}
+          <div style="margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;color:var(--fg-2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{{ venue.name }}</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+              {% for e in venue.events %}
+              <tr>
+                <td style="padding:3px 0;vertical-align:top;">
+                  {% if e.url %}
+                    <a href="{{ e.url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:500;">{{ e.title }}</a>
+                  {% else %}
+                    <span style="color:var(--fg);font-weight:500;">{{ e.title }}</span>
+                  {% endif %}
+                  <span style="color:var(--fg-3);font-size:13px;">
+                    &nbsp;·&nbsp;{{ e.days_str }}{% if e.time %} {{ e.time }}{% endif %}{% if e.cost %} &nbsp;·&nbsp; {{ e.cost }}{% endif %}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </table>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if events.sources_failed %}
+        <div style="margin-top:8px;font-size:11px;color:var(--fg-4);font-style:italic;">
+          No data: {% for f in events.sources_failed %}{{ f }}{% if not loop.last %}; {% endif %}{% endfor %}
+        </div>
+      {% endif %}
+    {% elif events.status == "error" %}
+      <div style="padding:8px 0;color:var(--error);font-size:13px;">Events fetch failed: {{ events.error }}</div>
+    {% else %}
+      {{ stub_block("Events") }}
+    {% endif %}
+  {%- endmacro %}
+
   <!-- ===== Page header (title + theme toggle) ===== -->
 
   <div style="border-bottom:2px solid var(--border-strong);padding-bottom:12px;margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
@@ -441,6 +481,10 @@
   <!-- ===== Row 3: News (full width, internal 2-col for subsections) ===== -->
 
   <div style="margin-bottom:24px;">{{ news_block(news) }}</div>
+
+  <!-- ===== Row 4: Events (full width) ===== -->
+
+  <div style="margin-bottom:24px;">{{ events_block(events) }}</div>
 
   <!-- ===== Footer ===== -->
 

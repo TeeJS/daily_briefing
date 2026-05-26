@@ -98,6 +98,9 @@ ETSY_TOKENS_FILE = SECRETS_DIR / "etsy_tokens.json"
 FRESHSERVICE_DOMAIN = os.environ.get("FRESHSERVICE_DOMAIN", "")
 FRESHSERVICE_APIKEY = os.environ.get("FRESHSERVICE_APIKEY", "")
 
+# Local events feed — weekly JSON from temples.schmitzplex.com.
+EVENTS_URL = os.environ.get("EVENTS_URL", "https://temples.schmitzplex.com/events.json")
+
 # News paywall blocklist — one domain per line, # comments, blank lines ignored.
 # Lives in SECRETS_DIR so it's on the already-mounted RW volume with no new mount needed.
 # On Unraid: /mnt/user/appdata/daily_briefing/secrets/news_paywall_blocklist.txt
