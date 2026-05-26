@@ -62,7 +62,10 @@ def fetch() -> SectionResult:
 def _fetch_json() -> dict[str, Any]:
     req = urllib.request.Request(
         EVENTS_URL,
-        headers={"Accept": "application/json"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; daily-briefing/1.0)",
+        },
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read())
