@@ -88,6 +88,15 @@ Container is **ephemeral** — `docker run --rm` once per day, exits when done.
 
 Env vars at runtime: `TZ` (defaults `America/Denver`), `ETSY_CLIENT_ID`, `ETSY_CLIENT_SECRET` (both needed during Etsy token refresh), `FRESHSERVICE_DOMAIN`, `FRESHSERVICE_APIKEY`. **`LLM_BASE_URL` and `LLM_MODEL` are dropped — do not include them.**
 
+## Adding a new section — checklist
+
+Every new source requires changes in **four** places. Missing any one causes a silent stub or an UndefinedError at render time:
+
+1. `briefing/sources/<name>.py` — `fetch() -> SectionResult`
+2. `briefing/run.py` — import + entry in `sources` dict
+3. **`briefing/render.py`** — add `<name>=sections.get("<name>", {"status": "stub"})` to `template.render()` ← easy to forget
+4. `briefing/templates/briefing.html.j2` — macro + call site in layout
+
 ## Known gotchas
 
 - **Jinja2 + `dict.items`** — never use `items` as a key on a dict passed to a template; `obj.items` returns the dict method, not the value. Use `entries` or any other name. This bit us on news.
