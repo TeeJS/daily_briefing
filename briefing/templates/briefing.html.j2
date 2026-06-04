@@ -409,6 +409,34 @@
     {% endif %}
   {%- endmacro %}
 
+  {%- macro outlook_block(outlook) %}
+    {{ section_header("📨", "Work Email — Unread") }}
+    {% if outlook.status == "ready" %}
+      {% if not outlook.messages %}
+        <div style="padding:8px 0;color:var(--fg-3);font-size:14px;">No unread work email.</div>
+      {% else %}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:13px;">
+          {% for item in outlook.messages %}
+          <tr>
+            <td style="padding:4px 0;vertical-align:top;">
+              <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
+                <div style="color:var(--fg-4);font-size:12px;">
+                  {{ item.sender }}{% if item.date_str %} <span style="color:var(--fg-6);">· {{ item.date_str }}</span>{% endif %}
+                </div>
+                <div style="color:var(--fg);">{{ item.subject }}</div>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    {% elif outlook.status == "error" %}
+      <div style="padding:8px 0;color:var(--error);font-size:13px;">Work email fetch failed: {{ outlook.error }}</div>
+    {% else %}
+      {{ stub_block("Work Email") }}
+    {% endif %}
+  {%- endmacro %}
+
   {%- macro events_block(events) %}
     {{ section_header("🎟️", "Events This Week") }}
     {% if events.status == "ready" %}
@@ -468,6 +496,7 @@
     <div>
       {{ email_block(email) }}
       <div style="margin-top:24px;">{{ freshservice_block(freshservice) }}</div>
+      <div style="margin-top:24px;">{{ outlook_block(outlook) }}</div>
     </div>
   </div>
 

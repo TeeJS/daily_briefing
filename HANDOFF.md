@@ -132,6 +132,79 @@ Click **Run Script**. Wait ~30 seconds. Verify:
 
 If any section failed, its error block in the rendered HTML tells you which bootstrap script to re-run.
 
+## Outlook pre-fetch — Windows Task Scheduler setup
+
+The work-email section is fed by `scripts/prefetch_outlook.py`, which runs on the
+Windows machine at 5:45 AM (15 minutes before the Unraid briefing container fires).
+It requires Outlook Desktop (Classic / OUTLOOK.EXE) to be running — which it is 24/7.
+
+### One-time setup
+
+**1. Install pywin32 in the daily_briefing venv (Windows only):**
+
+```powershell
+cd D:\Github\daily_briefing
+.venv\Scripts\activate
+pip install pywin32
+```
+
+**2. Create the output directory on the share:**
+
+The script creates this automatically on first run, but you can pre-create it:
+```
+\\192.168.1.25\data\websites\briefing\outlook\
+```
+(On Unraid this is `/mnt/user/data/websites/briefing/outlook/`)
+
+**3. Test the script manually first:**
+
+```powershell
+cd D:\Github\daily_briefing
+.venv\Scripts\activate
+python scripts\prefetch_outlook.py
+```
+
+Expected output:
+```
+Fetching unread Outlook messages — last 7 days, max 50 …
+  Found N unread message(s).
+  Wrote cache → \\192.168.1.25\data\websites\briefing\outlook\outlook_cache.json
+```
+
+**4. Create the Task Scheduler job:**
+
+Open Task Scheduler → Create Task (not Basic Task):
+
+- **General tab:**
+  - Name: `Daily Briefing — Prefetch Outlook`
+  - Run whether user is logged on or not: ✓
+  - Run with highest privileges: ✓ (needed to access the UNC path reliably)
+
+- **Triggers tab:** New → Daily, Start: 5:45 AM, Recur every 1 day
+
+- **Actions tab:** New → Start a program
+  - Program/script: `D:\Github\daily_briefing\.venv\Scripts\python.exe`
+  - Add arguments: `D:\Github\daily_briefing\scripts\prefetch_outlook.py`
+  - Start in: `D:\Github\daily_briefing`
+
+- **Conditions tab:** Uncheck "Start the task only if the computer is on AC power"
+
+- **Settings tab:** If the task is already running: `Do not start a new instance`
+
+**5. Verify end-to-end:**
+
+After the Task Scheduler job runs, check:
+- `\\192.168.1.25\data\websites\briefing\outlook\outlook_cache.json` exists and has today's timestamp
+- Next morning's briefing HTML shows the Work Email section with real data
+
+### Graceful degradation
+
+If the cache file is missing or older than 24 hours, `briefing/sources/outlook.py`
+returns `status="stub"` and the template shows a placeholder — the briefing still
+ships normally. No error block appears unless the file is present but unreadable.
+
+---
+
 ## What still needs to be built
 
 In rough priority order:

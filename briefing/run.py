@@ -23,6 +23,7 @@ from briefing.sources import (
     events as events_source,
     freshservice as freshservice_source,
     news as news_source,
+    outlook as outlook_source,
 )
 
 # Robots.txt content — block all search engines from indexing the briefing.
@@ -60,6 +61,7 @@ def _gather_sections(today: date, log: logging.Logger) -> dict[str, dict]:
         "freshservice": freshservice_source.fetch,
         "news": news_source.fetch,
         "events": events_source.fetch,
+        "outlook": outlook_source.fetch,
     }
     out: dict[str, dict] = {}
     for name, fetch in sources.items():

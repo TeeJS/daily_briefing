@@ -48,6 +48,7 @@ def render(sections: dict[str, dict], today: date) -> tuple[str, str]:
         freshservice=sections.get("freshservice", {"status": "stub"}),
         news=sections.get("news", {"status": "stub"}),
         events=sections.get("events", {"status": "stub"}),
+        outlook=sections.get("outlook", {"status": "stub"}),
     )
     return subject, html
 
