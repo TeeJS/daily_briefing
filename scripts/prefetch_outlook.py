@@ -176,7 +176,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    print(f"Fetching unread Outlook messages — last {args.days} days, max {args.max} …")
+    print(f"Fetching unread Outlook messages - last {args.days} days, max {args.max} ...")
 
     try:
         messages = fetch_unread(days=args.days, max_items=args.max)
@@ -197,7 +197,7 @@ def main() -> int:
         json.dumps(payload, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"  Wrote cache → {CACHE_FILE}")
+    print(f"  Wrote cache -> {CACHE_FILE}")
     return 0
 
 
