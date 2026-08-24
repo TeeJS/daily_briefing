@@ -44,7 +44,9 @@ def _gen_pkce() -> tuple[str, str]:
 
 
 def _exchange_code(code: str, state_in_code: str, verifier: str) -> dict:
-    body = urllib.parse.urlencode(
+    # This endpoint requires a JSON body — form-urlencoded 400s. Matches the
+    # trickv/hass-claude-usage config_flow, which POSTs json=payload.
+    body = json.dumps(
         {
             "grant_type": "authorization_code",
             "code": code,
@@ -53,12 +55,12 @@ def _exchange_code(code: str, state_in_code: str, verifier: str) -> dict:
             "redirect_uri": ANTHROPIC_REDIRECT_URI,
             "code_verifier": verifier,
         }
-    ).encode("ascii")
+    ).encode("utf-8")
     req = urllib.request.Request(
         ANTHROPIC_TOKEN_URL,
         data=body,
         headers={
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": "application/json",
             # Anthropic's token endpoint 403s the default urllib User-Agent.
             # Mimic the HA integration's client. (Verified 2026-05-17.)
             "User-Agent": "daily_briefing-bootstrap/0.1",

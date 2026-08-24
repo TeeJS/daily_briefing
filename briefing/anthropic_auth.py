@@ -12,8 +12,8 @@ import logging
 import time
 from typing import Any
 
+import urllib.error
 import urllib.request
-import urllib.parse
 
 from briefing.config import (
     ANTHROPIC_OAUTH_CLIENT_ID,
@@ -55,26 +55,37 @@ def get_access_token() -> str:
 
 def _refresh(refresh_token: str) -> dict[str, Any]:
     """Exchange a refresh token for a fresh access token."""
-    body = urllib.parse.urlencode(
+    # The console.anthropic.com/v1/oauth/token endpoint requires a JSON body;
+    # form-urlencoded 400s. Matches trickv/hass-claude-usage, which POSTs
+    # json=payload for both the code exchange and the refresh. (Verified 2026-08-24.)
+    body = json.dumps(
         {
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
             "client_id": ANTHROPIC_OAUTH_CLIENT_ID,
         }
-    ).encode("ascii")
+    ).encode("utf-8")
     req = urllib.request.Request(
         ANTHROPIC_TOKEN_URL,
         data=body,
         headers={
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": "application/json",
             # Anthropic's token endpoint 403s the default urllib User-Agent.
             "User-Agent": "daily_briefing/0.1",
             "Accept": "application/json",
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        data = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        # Surface the response body — a bare HTTPError hides why (e.g. an
+        # invalid_grant here means the refresh token is dead → re-bootstrap).
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(
+            f"Anthropic token refresh failed: HTTP {exc.code} {exc.reason} — {detail}"
+        ) from exc
     if "access_token" not in data:
         raise RuntimeError(f"Anthropic refresh response missing access_token: {data}")
     return {
