@@ -107,6 +107,7 @@ Every new source requires changes in **four** places. Missing any one causes a s
 - **Etsy `x-api-key` header** — must be `keystring:secret` (colon-separated), NOT just the keystring. Etsy enforced this Feb 9, 2026. Applies to all API calls (not the OAuth token endpoint). Computed as `ETSY_API_KEY = f"{ETSY_CLIENT_ID}:{ETSY_CLIENT_SECRET}"` in `config.py`. Both env vars required at runtime.
 - **Etsy status strings are title-cased** — the API returns `"Paid"`, `"Canceled"`, `"Completed"`, not lowercase. Always compare with `.lower()`. Active unshipped orders have `status="Paid"`; `status="open"` means unpaid/pending, not active.
 - **Anthropic `/api/oauth/usage` rate limit** — ~24h backoff if hit too fast. Minimum 300s. The daily briefing is well under, but never put it on a fast retry loop.
+- **Anthropic token endpoint needs a JSON body** — `console.anthropic.com/v1/oauth/token` 400s on `application/x-www-form-urlencoded`. Both the refresh (`anthropic_auth._refresh`) and the bootstrap code-exchange must POST a JSON body (`Content-Type: application/json`), matching `trickv/hass-claude-usage`. A stale access token can mask this for months since the refresh path isn't exercised until the token expires.
 
 ## Memory files (deeper context)
 
