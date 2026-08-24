@@ -110,8 +110,22 @@ def fetch_unread(days: int, max_items: int) -> list[dict]:
         items_col = inbox.Items
         items_col.Sort("[ReceivedTime]", True)  # True = Descending
 
-        # Restrict to unread mail only — much faster than iterating everything.
-        restricted = items_col.Restrict("[Unread] = True")
+        # Restrict to unread Focused-inbox items only.
+        # Exchange Online stamps every inbox item with MAPI property 0x12130003:
+        #   0 = Focused,  1 = Other
+        # Source: Petri / Office 365 for IT Pros — confirmed via MFCMAPI inspection.
+        # Falls back to all-unread if the property is not present on this server.
+        FOCUSED_UNREAD = (
+            '@SQL="urn:schemas:httpmail:read" = 0 '
+            'AND "http://schemas.microsoft.com/mapi/proptag/0x12130003" = 0'
+        )
+        try:
+            restricted = items_col.Restrict(FOCUSED_UNREAD)
+            _ = restricted.Count  # force evaluation; throws if property unsupported
+            print(f"  Focused inbox filter applied ({restricted.Count} unread focused items).")
+        except Exception as exc:
+            print(f"  Focused filter unavailable ({exc}), falling back to all unread.")
+            restricted = items_col.Restrict("[Unread] = True")
 
         results: list[dict] = []
         for msg in restricted:
