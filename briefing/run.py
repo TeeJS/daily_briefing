@@ -22,6 +22,7 @@ from briefing.sources import (
     etsy as etsy_source,
     events as events_source,
     freshservice as freshservice_source,
+    meeting_prep as meeting_prep_source,
     news as news_source,
     outlook as outlook_source,
 )
@@ -55,6 +56,7 @@ def _gather_sections(today: date, log: logging.Logger) -> dict[str, dict]:
     """Run each source's fetch, isolating failures so one bad section doesn't kill the briefing."""
     sources = {
         "calendar": lambda: calendar_source.fetch(today=today),
+        "meeting_prep": lambda: meeting_prep_source.fetch(today=today),
         "email": email_source.fetch,
         "claude_usage": claude_usage_source.fetch,
         "etsy": etsy_source.fetch,

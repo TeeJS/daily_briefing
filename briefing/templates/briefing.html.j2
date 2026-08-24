@@ -290,6 +290,28 @@
     {% endif %}
   {%- endmacro %}
 
+  {%- macro meeting_prep_block(meeting_prep) %}
+    {% if meeting_prep.status == "ready" and meeting_prep.entries %}
+    <div style="margin-bottom:24px;">
+      {{ section_header("📋", "Meeting Prep") }}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+        {% for item in meeting_prep.entries %}
+        <tr>
+          <td style="padding:4px 0;vertical-align:top;">
+            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:500;">{{ item.title }}</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% elif meeting_prep.status == "error" %}
+    <div style="margin-bottom:24px;">
+      {{ section_header("📋", "Meeting Prep") }}
+      <div style="padding:8px 0;color:var(--error);font-size:13px;">Meeting prep fetch failed: {{ meeting_prep.error }}</div>
+    </div>
+    {% endif %}
+  {%- endmacro %}
+
   {%- macro etsy_block(etsy) %}
     {{ section_header("📦", "Etsy Orders to Ship") }}
     {% if etsy.status == "ready" %}
@@ -494,6 +516,7 @@
   <div class="cols" style="margin-bottom:24px;">
     <div>{{ cal_block(calendar) }}</div>
     <div>
+      {{ meeting_prep_block(meeting_prep) }}
       {{ email_block(email) }}
       <div style="margin-top:24px;">{{ freshservice_block(freshservice) }}</div>
       <div style="margin-top:24px;">{{ outlook_block(outlook) }}</div>

@@ -19,6 +19,12 @@ BRIEFINGS_DIR = Path(os.environ.get("BRIEFING_ARCHIVE_DIR", "/app/briefings"))
 LOGS_DIR = Path(os.environ.get("BRIEFING_LOGS_DIR", "/app/logs"))
 PROMPTS_DIR = Path(os.environ.get("BRIEFING_PROMPTS_DIR", "/app/prompts"))
 
+# Meeting-prep briefs dropped by an external process into
+# /mnt/user/data/media/meetings/meeting_prep/YYYY/MM/DD/*.html (M:\ on Windows).
+# Mounted read-only into the container; today's files are copied into the served
+# briefings tree so links resolve over briefing.schmitzplex.com.
+MEETING_PREP_DIR = Path(os.environ.get("BRIEFING_MEETING_PREP_DIR", "/app/meeting_prep"))
+
 # User-facing settings
 TIMEZONE = ZoneInfo(os.environ.get("TZ", "America/Denver"))
 RECIPIENT_EMAIL = os.environ.get("BRIEFING_RECIPIENT", "teejschmitz@gmail.com")

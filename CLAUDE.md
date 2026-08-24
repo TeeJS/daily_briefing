@@ -128,6 +128,9 @@ pip install -e .
 $env:BRIEFING_SECRETS_DIR = ".\preview\secrets"
 $env:BRIEFING_ARCHIVE_DIR = ".\preview\briefings"
 $env:BRIEFING_LOGS_DIR = ".\preview\logs"
+# Point at the real meeting-prep share to exercise the Meeting Prep section
+# (files live under YYYY\MM\DD\; use --date to hit a day that has one).
+$env:BRIEFING_MEETING_PREP_DIR = "M:\media\meetings\meeting_prep"
 python -m briefing.run
 ```
 

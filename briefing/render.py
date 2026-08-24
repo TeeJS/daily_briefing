@@ -42,6 +42,7 @@ def render(sections: dict[str, dict], today: date) -> tuple[str, str]:
         generated_at=now_str,
         archive_url=ARCHIVE_BASE_URL,
         calendar=sections.get("calendar", {"status": "stub"}),
+        meeting_prep=sections.get("meeting_prep", {"status": "stub"}),
         email=sections.get("email", {"status": "stub"}),
         claude_usage=sections.get("claude_usage", {"status": "stub"}),
         etsy=sections.get("etsy", {"status": "stub"}),
