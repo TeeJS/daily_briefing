@@ -83,6 +83,21 @@ def _refresh(refresh_token: str) -> dict[str, Any]:
         # Surface the response body — a bare HTTPError hides why (e.g. an
         # invalid_grant here means the refresh token is dead → re-bootstrap).
         detail = exc.read().decode("utf-8", errors="replace")[:500]
+        # Anthropic refresh tokens are single-use rotating; invalid_grant means
+        # ours is dead (expired, or rotated out) and the section can't recover
+        # without a re-auth. Log loudly and give an actionable message rather
+        # than a raw HTTP dump so a lapse is noticed and fixed, not ignored.
+        if exc.code == 400 and "invalid_grant" in detail:
+            msg = (
+                "Anthropic refresh token expired — re-authorize by running "
+                "scripts/bootstrap_anthropic_oauth.py"
+            )
+            log.warning("anthropic auth: %s (HTTP 400 invalid_grant)", msg)
+            raise RuntimeError(msg) from exc
+        log.warning(
+            "anthropic auth: token refresh failed: HTTP %s %s — %s",
+            exc.code, exc.reason, detail,
+        )
         raise RuntimeError(
             f"Anthropic token refresh failed: HTTP {exc.code} {exc.reason} — {detail}"
         ) from exc

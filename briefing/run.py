@@ -18,6 +18,7 @@ from briefing.render import render, render_index
 from briefing.sources import (
     calendar as calendar_source,
     claude_usage as claude_usage_source,
+    codex_usage as codex_usage_source,
     email as email_source,
     etsy as etsy_source,
     events as events_source,
@@ -59,6 +60,7 @@ def _gather_sections(today: date, log: logging.Logger) -> dict[str, dict]:
         "meeting_prep": lambda: meeting_prep_source.fetch(today=today),
         "email": email_source.fetch,
         "claude_usage": claude_usage_source.fetch,
+        "codex_usage": codex_usage_source.fetch,
         "etsy": etsy_source.fetch,
         "freshservice": freshservice_source.fetch,
         "news": news_source.fetch,

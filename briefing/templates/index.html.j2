@@ -79,27 +79,57 @@
   :root[data-theme="light"] .theme-toggle .icon-dark  { display: inline; }
   :root[data-theme="light"] .theme-toggle .icon-light { display: none; }
 
-  /* Archive-specific layout */
-  .year-group { margin-bottom: 32px; }
+  /* Archive-specific layout — years and months are collapsible <details>.
+     The newest year (and its newest month) render open; everything older
+     collapses by default and expands on click. Native <details>, no JS. */
+  .year-group { margin-bottom: 16px; }
+  .month-group { margin: 6px 0; }
+
+  summary { cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
   .year-heading {
-    margin: 24px 0 8px;
-    padding: 6px 10px;
+    margin: 0;
+    padding: 6px 10px 6px 30px;
     background-color: var(--header-bg);
     color: var(--header-fg);
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 0.02em;
     border-radius: 4px;
+    position: relative;
   }
+  .year-heading::before {
+    content: "\25B8";  /* ▸ */
+    position: absolute;
+    left: 12px;
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+  details[open] > .year-heading::before { transform: rotate(90deg); }
+
   .month-heading {
-    margin: 16px 0 4px;
+    margin: 12px 0 4px;
+    padding-left: 18px;
     font-size: 13px;
     font-weight: 600;
     color: var(--fg-2);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    position: relative;
   }
-  .day-list { margin: 0; padding: 0 0 0 18px; list-style: disc; }
+  .month-heading::before {
+    content: "\25B8";  /* ▸ */
+    position: absolute;
+    left: 2px;
+    font-size: 11px;
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+  details[open] > .month-heading::before { transform: rotate(90deg); }
+
+  .day-list { margin: 0 0 4px; padding: 0 0 0 34px; list-style: disc; }
   .day-list li { margin: 3px 0; line-height: 1.4; font-size: 14px; color: var(--fg); }
   .day-list a { color: var(--link); text-decoration: none; }
   .day-list a:hover { text-decoration: underline; }
@@ -148,17 +178,20 @@
     <div class="empty-note">No briefings yet — check back after the next 6 AM run.</div>
   {% else %}
     {% for year, months in archive %}
-      <div class="year-group">
-        <div class="year-heading">{{ year }}</div>
+      {% set year_first = loop.first %}
+      <details class="year-group"{% if year_first %} open{% endif %}>
+        <summary class="year-heading">{{ year }}</summary>
         {% for month_num, month_name, days in months %}
-          <div class="month-heading">{{ month_name }}</div>
-          <ul class="day-list">
-            {% for day, weekday, url in days %}
-              <li><a href="{{ url }}">{{ month_name }} {{ day }}</a><span class="weekday">{{ weekday }}</span></li>
-            {% endfor %}
-          </ul>
+          <details class="month-group"{% if year_first and loop.first %} open{% endif %}>
+            <summary class="month-heading">{{ month_name }}</summary>
+            <ul class="day-list">
+              {% for day, weekday, url in days %}
+                <li><a href="{{ url }}">{{ month_name }} {{ day }}</a><span class="weekday">{{ weekday }}</span></li>
+              {% endfor %}
+            </ul>
+          </details>
         {% endfor %}
-      </div>
+      </details>
     {% endfor %}
   {% endif %}
 

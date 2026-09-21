@@ -81,6 +81,16 @@ ANTHROPIC_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 ANTHROPIC_PROFILE_URL = "https://api.anthropic.com/api/oauth/profile"
 ANTHROPIC_TOKENS_FILE = SECRETS_DIR / "anthropic_tokens.json"
 
+# Codex (ChatGPT) usage — the account-global rate-limit endpoint the Codex CLI's
+# /status calls. Auth is the Codex CLI login token. The briefing runs in a
+# container that has no access to a live ~/.codex, so a scheduled task on a machine
+# where the Codex CLI runs syncs that token into SECRETS_DIR as codex_auth.json
+# (same shape as ~/.codex/auth.json). The Codex CLI keeps it fresh; the briefing
+# only reads it — never refreshes or writes — so a stale token degrades to a
+# friendly error instead of corrupting anything.
+CODEX_AUTH_FILE = SECRETS_DIR / "codex_auth.json"
+CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+
 # Etsy OAuth — Etsy Open API v3.
 # client_id (keystring) and redirect URI come from the user's Etsy app registration
 # (https://www.etsy.com/developers/your-apps). Both required at bootstrap time;

@@ -31,6 +31,25 @@ from briefing.sources import SectionResult
 log = logging.getLogger(__name__)
 
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_TIME_RE = re.compile(r"^\s*(\d{1,2}):(\d{2})")
+
+
+def _time_sort_key(title: str) -> int:
+    """Minutes-since-midnight from a leading ``H:MM`` in the title, so briefs
+    list chronologically.  Titles now start with the meeting time (``9:00 —
+    Tech Support Weekly``) but carry no am/pm, so assume a workday: 7–11 = AM,
+    12 = noon, 1–6 = PM.  Titles with no leading time sort last.
+
+    A genuine 7–11 PM meeting would mis-sort as morning, but real work briefs
+    fall inside business hours, so this orders every practical case correctly.
+    """
+    m = _TIME_RE.match(title)
+    if not m:
+        return 24 * 60 + 1
+    hour, minute = int(m.group(1)), int(m.group(2))
+    if 1 <= hour <= 6:  # 12 stays noon; 7–11 stay AM
+        hour += 12
+    return hour * 60 + minute
 
 
 def fetch(today: date) -> SectionResult:
@@ -62,6 +81,7 @@ def fetch(today: date) -> SectionResult:
 
     if not entries:
         return {"status": "stub"}
+    entries.sort(key=lambda e: _time_sort_key(e["title"]))
     log.info("meeting_prep: %d brief(s) for today", len(entries))
     return {"status": "ready", "entries": entries}
 
