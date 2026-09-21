@@ -262,6 +262,38 @@
     {% endif %}
   {%- endmacro %}
 
+  {%- macro codex_block(codex_usage) %}
+    {{ section_header("💬", "Codex Usage") }}
+    {% if codex_usage.status == "ready" %}
+      {%- macro usage_row(label, pct, resets) %}
+        {% if pct is not none %}
+        <tr>
+          <td style="padding:4px 8px 4px 0;vertical-align:top;color:var(--fg-2);font-size:13px;">{{ label }}</td>
+          <td style="padding:4px 8px 4px 0;vertical-align:top;font-size:14px;font-weight:600;text-align:right;color:{% if pct >= 80 %}var(--error){% elif pct >= 50 %}var(--warn){% else %}var(--fg){% endif %};">
+            {{ "%.0f"|format(pct) }}%
+          </td>
+        </tr>
+        {% if resets %}
+        <tr>
+          <td colspan="2" style="padding:0 0 4px;font-size:11px;color:var(--fg-4);">resets {{ resets }}</td>
+        </tr>
+        {% endif %}
+        {% endif %}
+      {%- endmacro %}
+      {% if codex_usage.plan %}
+        <div style="padding:0 0 6px;font-size:11px;color:var(--fg-4);">{{ codex_usage.plan }}</div>
+      {% endif %}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+        {{ usage_row(codex_usage.session_label or "5-hour session", codex_usage.session_pct, codex_usage.session_resets) }}
+        {{ usage_row(codex_usage.week_label or "weekly", codex_usage.week_pct, codex_usage.week_resets) }}
+      </table>
+    {% elif codex_usage.status == "error" %}
+      <div style="padding:8px 0;color:var(--error);font-size:13px;">Codex usage fetch failed: {{ codex_usage.error }}</div>
+    {% else %}
+      {{ stub_block("Codex Usage") }}
+    {% endif %}
+  {%- endmacro %}
+
   {%- macro email_block(email) %}
     {{ section_header("📧", "Unread / Starred Emails") }}
     {% if email.status == "ready" %}
@@ -518,6 +550,7 @@
       {{ cal_block(calendar) }}
       <div style="margin-top:24px;">{{ etsy_block(etsy) }}</div>
       <div style="margin-top:24px;">{{ claude_block(claude_usage) }}</div>
+      <div style="margin-top:24px;">{{ codex_block(codex_usage) }}</div>
     </div>
     <div>
       {{ meeting_prep_block(meeting_prep) }}
