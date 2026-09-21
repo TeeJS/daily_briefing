@@ -511,10 +511,14 @@
     </button>
   </div>
 
-  <!-- ===== Row 1: Calendar | Email + Freshservice (stacked in right column) ===== -->
+  <!-- ===== Row 1: Calendar + Etsy + Claude Usage (left) | Meeting Prep + Email + Freshservice + Outlook (right) ===== -->
 
   <div class="cols" style="margin-bottom:24px;">
-    <div>{{ cal_block(calendar) }}</div>
+    <div>
+      {{ cal_block(calendar) }}
+      <div style="margin-top:24px;">{{ etsy_block(etsy) }}</div>
+      <div style="margin-top:24px;">{{ claude_block(claude_usage) }}</div>
+    </div>
     <div>
       {{ meeting_prep_block(meeting_prep) }}
       {{ email_block(email) }}
@@ -523,18 +527,11 @@
     </div>
   </div>
 
-  <!-- ===== Row 2: Claude Usage | Etsy Orders (the two short sections) ===== -->
-
-  <div class="cols" style="margin-bottom:24px;">
-    <div>{{ claude_block(claude_usage) }}</div>
-    <div>{{ etsy_block(etsy) }}</div>
-  </div>
-
-  <!-- ===== Row 3: News (full width, internal 2-col for subsections) ===== -->
+  <!-- ===== Row 2: News (full width, internal 2-col for subsections) ===== -->
 
   <div style="margin-bottom:24px;">{{ news_block(news) }}</div>
 
-  <!-- ===== Row 4: Events (full width) ===== -->
+  <!-- ===== Row 3: Events (full width) ===== -->
 
   <div style="margin-bottom:24px;">{{ events_block(events) }}</div>
 
