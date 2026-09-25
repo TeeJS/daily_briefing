@@ -42,6 +42,9 @@ briefing/                  Python package (the actual code)
   templates/
     briefing.html.j2       Per-day briefing HTML (responsive, dark mode)
     index.html.j2          Archive index (year/month groups, newest first)
+    theme.js               Light/dark toggle; inlined by render.py and allowed by CSP hash
+
+tests/                     pytest — link sanitizing + CSP (pip install -e ".[dev]"; pytest)
 
 scripts/
   bootstrap_google_oauth.py     One-time browser auth
@@ -95,7 +98,7 @@ Every new source requires changes in **four** places. Missing any one causes a s
 1. `briefing/sources/<name>.py` — `fetch() -> SectionResult`
 2. `briefing/run.py` — import + entry in `sources` dict
 3. **`briefing/render.py`** — add `<name>=sections.get("<name>", {"status": "stub"})` to `template.render()` ← easy to forget
-4. `briefing/templates/briefing.html.j2` — macro + call site in layout
+4. `briefing/templates/briefing.html.j2` — macro + call site in layout (every dynamic `href` as `{{ x|sanitize_url }}`)
 
 ## Known gotchas
 
@@ -108,6 +111,7 @@ Every new source requires changes in **four** places. Missing any one causes a s
 - **Etsy status strings are title-cased** — the API returns `"Paid"`, `"Canceled"`, `"Completed"`, not lowercase. Always compare with `.lower()`. Active unshipped orders have `status="Paid"`; `status="open"` means unpaid/pending, not active.
 - **Anthropic `/api/oauth/usage` rate limit** — ~24h backoff if hit too fast. Minimum 300s. The daily briefing is well under, but never put it on a fast retry loop.
 - **Anthropic token endpoint needs a JSON body** — `console.anthropic.com/v1/oauth/token` 400s on `application/x-www-form-urlencoded`. Both the refresh (`anthropic_auth._refresh`) and the bootstrap code-exchange must POST a JSON body (`Content-Type: application/json`), matching `trickv/hass-claude-usage`. A stale access token can mask this for months since the refresh path isn't exercised until the token expires.
+- **Feed links are untrusted** — feedparser passes `javascript:` / `data:` links through unchanged, and Jinja autoescaping doesn't neutralize a URL scheme. That's why every dynamic `href` goes through `|sanitize_url` (http/https/relative only; anything else becomes `#` and logs a warning).
 
 ## Memory files (deeper context)
 
@@ -142,5 +146,6 @@ python -m briefing.run
 - Inline CSS in the template (originally Gmail-safe, kept for self-contained HTML). CSS variables drive light/dark mode; a `<style>` block in `<head>` defines the palette and responsive grid (640px breakpoint). System font stack. 720px max content width.
 - Section macros in the template are pure: data in, HTML out.
 - `:visited` rules MUST use hard-coded color literals, not `var()` — Chromium blocks CSS variable resolution inside `:visited` as anti-history-sniffing. (Chrome 136+ also partitions `:visited` by top-level site, so `file://` won't show visited styling at all — only `https://briefing.schmitzplex.com` exhibits the expected behavior.)
-- No tests yet. If logic gets complex enough that a regression would be hard to spot, add them — but most of this is glue code where a smoke test (`--dry-run`) catches breakage.
+- **Content-Security-Policy**: both pages carry a CSP `<meta>` (built in `render.py`) that allows inline styles but only one script — `templates/theme.js`, by SHA-256 hash, which `render.py` computes at import. Edit `theme.js` freely (the hash follows), but don't add inline `on*=` handlers, other `<script>` blocks, or external resources to the templates: the browser silently blocks them. The same header on nginx would also cover the copied meeting-prep pages; that config isn't in this repo.
+- Tests live in `tests/` (so far only link sanitizing + the CSP). Add more where a regression would be hard to spot — most of this is glue code where a smoke run catches breakage.
 - Don't add CLI flags or env vars without need. Anything new should have a clear caller.
