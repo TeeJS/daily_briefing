@@ -40,7 +40,7 @@ daily-briefing = "briefing.run:main"
 include = ["briefing*"]
 
 [tool.setuptools.package-data]
-briefing = ["templates/*.j2"]
+briefing = ["templates/*.j2", "templates/*.js"]
 
 [tool.ruff]
 line-length = 100

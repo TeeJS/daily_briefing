@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="{{ csp }}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>{{ subject }}</title>
@@ -128,29 +129,7 @@
   :root[data-theme="light"] .theme-toggle .icon-light { display: none; }
 </style>
 
-<script>
-  /* Apply saved theme as early as possible to avoid a light/dark flash. */
-  (function () {
-    try {
-      var saved = localStorage.getItem('theme');
-      if (saved === 'light' || saved === 'dark') {
-        document.documentElement.setAttribute('data-theme', saved);
-      }
-    } catch (e) { /* localStorage unavailable; fall through to OS preference */ }
-  })();
-
-  function toggleTheme() {
-    var root = document.documentElement;
-    var current = root.getAttribute('data-theme');
-    if (!current) {
-      // No explicit override yet — read what's resolved from OS preference.
-      current = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    var next = current === 'dark' ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
-    try { localStorage.setItem('theme', next); } catch (e) {}
-  }
-</script>
+{{ theme_script }}
 </head>
 <body style="margin:0;padding:0;background-color:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--fg);">
 <div style="max-width:720px;margin:0 auto;padding:24px 16px;">
@@ -185,7 +164,7 @@
             {%- if ev.is_error -%}
               <span style="color:var(--error);">{{ ev.calendar }}: {{ ev.error }}</span>
             {%- elif ev.link -%}
-              <a href="{{ ev.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
+              <a href="{{ ev.link|sanitize_url }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
                 <div style="font-weight:500;color:var(--fg);">{{ ev.summary }}</div>
                 <div style="font-size:12px;color:var(--fg-4);margin-top:2px;">
                   {{ ev.calendar }}{% if ev.location %} &middot; {{ ev.location }}{% endif %}
@@ -304,7 +283,7 @@
           {% for item in email.messages %}
           <tr>
             <td style="padding:4px 0;vertical-align:top;">
-              <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
+              <a href="{{ item.link|sanitize_url }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
                 <div style="color:var(--fg-4);font-size:12px;">
                   {{ item.sender }}{% if item.date_str %} <span style="color:var(--fg-6);">· {{ item.date_str }}</span>{% endif %}
                 </div>
@@ -330,7 +309,7 @@
         {% for item in meeting_prep.entries %}
         <tr>
           <td style="padding:4px 0;vertical-align:top;">
-            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:500;">{{ item.title }}</a>
+            <a href="{{ item.url|sanitize_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:500;">{{ item.title }}</a>
           </td>
         </tr>
         {% endfor %}
@@ -350,7 +329,7 @@
       {%- macro order_row(o, label_color, label_text) %}
         <tr>
           <td style="padding:4px 0 8px;vertical-align:top;font-size:14px;color:var(--fg);">
-            <div style="font-weight:600;color:{{ label_color }};">{{ label_text }} &middot; {% if o.etsy_url %}<a href="{{ o.etsy_url }}" style="color:inherit;text-decoration:none;">#{{ o.receipt_id }}</a>{% else %}#{{ o.receipt_id }}{% endif %}</div>
+            <div style="font-weight:600;color:{{ label_color }};">{{ label_text }} &middot; {% if o.etsy_url %}<a href="{{ o.etsy_url|sanitize_url }}" style="color:inherit;text-decoration:none;">#{{ o.receipt_id }}</a>{% else %}#{{ o.receipt_id }}{% endif %}</div>
             <div style="margin-top:2px;color:var(--fg-3);">{{ o.buyer_name }}{% if o.ship_to %} &middot; {{ o.ship_to }}{% endif %} &middot; ${{ "%.2f"|format(o.total_dollars or 0) }}</div>
             <div style="font-size:12px;color:var(--fg-3);margin-top:1px;">
               {{ o.item_count }} item{% if o.item_count != 1 %}s{% endif %}
@@ -400,7 +379,7 @@
             <td style="padding:4px 0 6px;vertical-align:top;">
               <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
                 <span style="font-size:11px;font-weight:700;padding:1px 5px;border-radius:3px;background-color:{% if t.group_label == 'T' %}var(--link){% else %}var(--warn){% endif %};color:{% if t.group_label == 'T' %}#fff{% else %}#000{% endif %};">{{ t.group_label }}</span>
-                <a href="{{ t.url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:600;">#{{ t.id }}</a>
+                <a href="{{ t.url|sanitize_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:600;">#{{ t.id }}</a>
                 <span style="color:var(--fg);">{{ t.subject }}</span>
               </div>
               <div style="font-size:12px;color:var(--fg-3);margin-top:2px;">
@@ -427,7 +406,7 @@
         <ul style="margin:0 0 4px;padding:0 0 0 18px;font-size:13px;color:var(--fg);">
           {% for item in sub.entries %}
             <li style="margin:3px 0;line-height:1.35;">
-              <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="news-link">{{ item.title }}</a>
+              <a href="{{ item.link|sanitize_url }}" target="_blank" rel="noopener noreferrer" class="news-link">{{ item.title }}</a>
               {% if item.source %}<span style="color:var(--fg-4);font-size:11px;"> &middot; {{ item.source }}</span>{% endif %}
             </li>
           {% endfor %}
@@ -473,7 +452,7 @@
           {% for item in outlook.messages %}
           <tr>
             <td style="padding:4px 0;vertical-align:top;">
-              <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
+              <a href="{{ item.link|sanitize_url }}" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;">
                 <div style="color:var(--fg-4);font-size:12px;">
                   {{ item.sender }}{% if item.date_str %} <span style="color:var(--fg-6);">· {{ item.date_str }}</span>{% endif %}
                 </div>
@@ -505,7 +484,7 @@
               <tr>
                 <td style="padding:3px 0;vertical-align:top;">
                   {% if e.url %}
-                    <a href="{{ e.url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:500;">{{ e.title }}</a>
+                    <a href="{{ e.url|sanitize_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link);text-decoration:none;font-weight:500;">{{ e.title }}</a>
                   {% else %}
                     <span style="color:var(--fg);font-weight:500;">{{ e.title }}</span>
                   {% endif %}
@@ -538,7 +517,7 @@
       <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em;color:var(--fg);">Daily Briefing</h1>
       <div style="margin-top:4px;font-size:14px;color:var(--fg-3);">{{ date_long }}</div>
     </div>
-    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+    <button type="button" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
       <span class="icon-dark">🌙</span><span class="icon-light">☀</span>
     </button>
   </div>
@@ -572,7 +551,7 @@
 
   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--fg-5);text-align:center;">
     Generated {{ generated_at }} &middot;
-    <a href="{{ archive_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--fg-5);text-decoration:underline;">View archive</a>
+    <a href="{{ archive_url|sanitize_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--fg-5);text-decoration:underline;">View archive</a>
   </div>
   <div style="margin-top:8px;font-size:11px;color:var(--fg-5);text-align:center;">
     The term "Etsy" is a trademark of Etsy, Inc. This application uses the Etsy API but is not endorsed or certified by Etsy, Inc.
