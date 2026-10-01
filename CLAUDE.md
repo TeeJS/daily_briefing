@@ -102,6 +102,7 @@ Every new source requires changes in **four** places. Missing any one causes a s
 
 ## Known gotchas
 
+- **Google OAuth app must stay *In production*** — in *Testing*, Google expires the refresh token after 7 days and Calendar/Email break weekly. Publishing needs a home page, privacy URL and authorized domain on the Branding page; never upload a logo (it triggers verification review). Setup steps: README.md → Setup → Google OAuth.
 - **Jinja2 + `dict.items`** — never use `items` as a key on a dict passed to a template; `obj.items` returns the dict method, not the value. Use `entries` or any other name. This bit us on news.
 - **Windows time formatting** — `%-d` / `%-I` not supported on Windows. Use `%d` / `%I` then `.lstrip("0")` or `.replace(" 0", " ")`. Already done throughout.
 - **`tzdata` package required** — Windows + minimal Linux images lack the IANA tz db. Listed as a runtime dep in pyproject.

@@ -65,16 +65,18 @@ These are one-time steps to bootstrap the deployment.
 
 Both scopes are read-only. The briefing job has no send/modify authority on the Google account.
 
-1. Create a Google Cloud project at https://console.cloud.google.com/.
+1. Create a Google Cloud project at https://console.cloud.google.com/. No billing account is needed; both APIs are free.
 2. Enable the **Google Calendar API** and the **Gmail API** (both must be enabled or Google silently drops the scope during consent).
-3. Configure the OAuth consent screen (External, with your account as a test user).
-4. Create OAuth client credentials — Desktop App type. Download the `client_secret.json`.
-5. On the Unraid host, place it at `/mnt/user/appdata/daily_briefing/secrets/google_client_secret.json`.
-6. Run the bootstrap script once from a machine with a browser:
+3. **APIs & Services → OAuth consent screen** (opens Google Auth Platform) → **Get started**: app name, support email, **External**, contact email.
+4. **Branding**: set the home page and privacy policy links to `https://briefing.schmitzplex.com` and add `schmitzplex.com` as an authorized domain (Google won't publish without them). Leave the logo blank; uploading one triggers Google's verification review. Skip Data Access and test users.
+5. **Audience → Publish app**. Status must read *In production*: in *Testing*, Google expires the refresh token after 7 days and the briefing breaks weekly.
+6. **Clients → Create client → Desktop app**. Click **Download JSON** in the creation pop-up; the secret is never shown again.
+7. On the Unraid host, place it at `/mnt/user/appdata/daily_briefing/secrets/google_client_secret.json`.
+8. Run the bootstrap script once from a machine with a browser:
    ```
    python scripts/bootstrap_google_oauth.py
    ```
-   This opens a browser, runs the OAuth flow, and writes the resulting tokens to `secrets/google_tokens.json`. Refresh tokens persist; the briefing job refreshes silently from there on.
+   This opens a browser, runs the OAuth flow, and writes the resulting tokens to `secrets/google_tokens.json`. On the "Google hasn't verified this app" screen, click **Advanced → Go to … (unsafe)** (expected for a personal app), then tick **both** permission checkboxes; leaving one unticked makes the script fail. Refresh tokens persist; the briefing job refreshes silently from there on.
 
 ### 2. Unraid
 

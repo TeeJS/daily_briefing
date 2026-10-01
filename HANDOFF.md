@@ -57,13 +57,15 @@ mkdir local_secrets -ErrorAction SilentlyContinue
 (On subsequent runs, skip the `python -m venv` and `pip install -e .` lines — just `cd`, `activate`, set env vars.)
 
 **3a. Google (Calendar read + Gmail read — both read-only)**
-1. https://console.cloud.google.com/ — create or reuse a project
+1. https://console.cloud.google.com/ — create or reuse a project (no billing account needed)
 2. Enable **Google Calendar API** and **Gmail API** (both must be enabled or Google silently drops the scope during consent)
-3. OAuth consent screen → External, add yourself as a test user
-4. Credentials → OAuth client ID → **Desktop app**
-5. Download the JSON, save as `local_secrets/google_client_secret.json`
-6. `python scripts/bootstrap_google_oauth.py`
-7. Browser opens, you authorize (the consent screen will list two read-only scopes; no send/modify). `local_secrets/google_tokens.json` created.
+3. **APIs & Services → OAuth consent screen** → **Get started**: app name, support email, **External**, contact email
+4. **Branding**: home page + privacy policy = `https://briefing.schmitzplex.com`, authorized domain = `schmitzplex.com` (required to publish). No logo (triggers verification review). Skip Data Access and test users.
+5. **Audience → Publish app** → status *In production*. *Testing* expires the refresh token after 7 days.
+6. **Clients → Create client → Desktop app** → **Download JSON** in the creation pop-up (secret is never shown again)
+7. Save the JSON as `local_secrets/google_client_secret.json`
+8. `python scripts/bootstrap_google_oauth.py`
+9. Browser opens. "Google hasn't verified this app" → **Advanced → Go to … (unsafe)**. Tick **both** read-only permission checkboxes (no send/modify). `local_secrets/google_tokens.json` created.
 
 **3b. Anthropic (Claude usage)**
 
