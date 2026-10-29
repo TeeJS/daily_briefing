@@ -48,9 +48,8 @@ INCLUDED_CALENDARS: tuple[CalendarRef, ...] = (
     CalendarRef("teejschmitz@gmail.com", "Personal"),
     CalendarRef("7t8v7cqf5c8688nqajplej0ka0@group.calendar.google.com", "Nozbe"),
     CalendarRef("tprd0n50dsp37ia629e2mo65lc@group.calendar.google.com", "Con Schedule"),
-    CalendarRef(
-        "tjschmitz.com_hkpt0d74ppjcecpcdt2u6ip898@group.calendar.google.com", "Church"
-    ),
+    # "Church" (tjschmitz.com_hkpt0d74…) removed 2026-10-29: no longer in the
+    # account's calendar list, every fetch 404'd.
     CalendarRef(
         "2ilh48eb9tb9mcom33a1a28htln6imau@import.calendar.google.com", "Calendar"
     ),

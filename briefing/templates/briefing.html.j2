@@ -80,6 +80,10 @@
   /* Two-column rows above and inside the news section.
      640px breakpoint = phones stack, tablets-and-up stay 2-col. */
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  /* Grid items default to min-width:auto, so one long unbreakable string
+     (e.g. a URL inside an error message) widens its column past the 720px
+     page and squeezes the other. Let columns shrink and break such strings. */
+  .cols > * { min-width: 0; overflow-wrap: anywhere; }
   @media (max-width: 640px) {
     .cols { grid-template-columns: 1fr; }
   }
