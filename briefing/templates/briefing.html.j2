@@ -526,18 +526,18 @@
     </button>
   </div>
 
-  <!-- ===== Row 1: Calendar + Etsy + Claude/Codex Usage (left) | Meeting Prep + Freshservice (right) ===== -->
+  <!-- ===== Row 1: Calendar (left) | Meeting Prep + Freshservice + Etsy + Claude/Codex Usage (right) ===== -->
 
   <div class="cols" style="margin-bottom:24px;">
     <div>
       {{ cal_block(calendar) }}
-      <div style="margin-top:24px;">{{ etsy_block(etsy) }}</div>
-      <div style="margin-top:24px;">{{ claude_block(claude_usage) }}</div>
-      <div style="margin-top:24px;">{{ codex_block(codex_usage) }}</div>
     </div>
     <div>
       {{ meeting_prep_block(meeting_prep) }}
       {{ freshservice_block(freshservice) }}
+      <div style="margin-top:24px;">{{ etsy_block(etsy) }}</div>
+      <div style="margin-top:24px;">{{ claude_block(claude_usage) }}</div>
+      <div style="margin-top:24px;">{{ codex_block(codex_usage) }}</div>
     </div>
   </div>
 
