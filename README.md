@@ -94,7 +94,8 @@ Both scopes are read-only. The briefing job has no send/modify authority on the 
     -v /mnt/user/appdata/daily_briefing/briefings:/app/briefings \
     -v /mnt/user/appdata/daily_briefing/logs:/app/logs \
     -v /mnt/user/appdata/daily_briefing/prompts:/app/prompts \
-    -v /mnt/user/data/media/meetings/meeting_prep:/app/meeting_prep:ro \
+    -v /mnt/user/data/meetings/meeting_prep:/app/meeting_prep:ro \
+    -e EVENTS_URL=http://192.168.1.25:8087/events.json \
     -e LLM_BASE_URL=http://lite.schmitzplex.com:4000/v1 \
     -e LLM_MODEL=<your-litellm-model-name> \
     -e TZ=America/Denver \

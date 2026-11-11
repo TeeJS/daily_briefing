@@ -3,9 +3,10 @@
 Architecture
 ------------
 Another job writes self-contained HTML meeting-prep files into
-  /mnt/user/data/media/meetings/meeting_prep/YYYY/MM/DD/*.html
-(that's M:\\media\\meetings\\meeting_prep on Windows — the same \\\\192.168.1.25\\data
-share, under media/ rather than websites/).  That tree is mounted read-only into
+  /mnt/user/data/meetings/meeting_prep/YYYY/MM/DD/*.html
+(that's M:\\meetings\\meeting_prep on Windows — the same \\\\192.168.1.25\\data
+share, under meetings/ rather than websites/; the old media/meetings/ tree is no
+longer read).  That tree is mounted read-only into
 the container at MEETING_PREP_DIR (default /app/meeting_prep).
 
 The container can *read* those files but nginx can't *serve* them — they live
