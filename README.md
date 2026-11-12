@@ -134,6 +134,19 @@ The script opens the authorize URL, you authorize in your browser, and the redir
 
 Most news subsections use public RSS feeds (no auth). The NWPX section will additionally need a free **Finnhub API key** for stock quotes — register at https://finnhub.io/ and set `FINNHUB_API_KEY` in the env when that section is wired up.
 
+### 6. "Mark complete" service (meeting-prep briefs)
+
+A small second container (`ghcr.io/teejs/daily_briefing-actions:latest`, built from `Dockerfile.actions`) lets you tick items off a meeting-prep brief. Ticked items are recorded in `done.json`, so the meeting-prep skill leaves them out of later briefs and lists them once under "Completed since last meeting"; if the row has a kanban card, the card moves to Done. Source: `briefing/actions.py` (service) and `briefing/templates/done.js` (page script, served at `/api/done.js`).
+
+| Setting | Value | Where it comes from |
+|---|---|---|
+| Port | `8183` (env `BRIEFING_ACTIONS_PORT`) | Checked free on the host 2026-11-12 (8182 is Tautulli). Re-check with `ss -tlnp` before changing it: host-network containers don't show in `docker ps` |
+| Volume `/app/state` (RW) | `/mnt/user/data/meetings/meeting_prep/_state` | Inside the folder the nightly job saves briefs to (`M:\meetings\meeting_prep\_state\done.json` on Windows); the skill reads it from there |
+| `KANBAN_URL` | `http://192.168.1.25:17808` | The kanban app's own port, from golang-kanban's `docker-compose.yml` |
+| `KANBAN_API_KEY` | your kanban API key (mask it) | The key kanban's `X-API-Key` login accepts — the same one the `kanban-mcp` container uses |
+
+Without the two kanban variables the list still works; ticking a card-backed row just reports "kanban is not connected". NPM Plus: on the `briefing.schmitzplex.com` proxy host add a custom location `/api/` forwarding to `http://192.168.1.25:8183` (the host's existing basic auth stays in front). State-changing requests must carry an `X-Briefing-Action: 1` header and a same-host `Origin`, which is what blocks cross-site clicks.
+
 ## Local development
 
 ```

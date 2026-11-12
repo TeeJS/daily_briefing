@@ -16,6 +16,8 @@ Three components on noraid:
 2. **Static webserver** — `nginx:alpine` container, always on, mounts `/mnt/user/data/websites/briefing` read-only at `/usr/share/nginx/html`, listens on host port 8181.
 3. **NPMPlus** — terminates HTTPS for `briefing.schmitzplex.com`, applies basic auth, forwards to `localhost:8181`.
 
+A fourth, optional component serves the "Mark complete" button on meeting-prep briefs: `briefing/actions.py` in its own image (`Dockerfile.actions`, stdlib only, port 8183), reached at `briefing.schmitzplex.com/api/` through an NPMPlus custom location behind the same basic auth. It owns `done.json` (in `meeting_prep/_state/`, written RW; the daily generator never touches it) and holds the kanban API key. The meeting-prep skill (not this repo) generates the brief HTML with the checkbox markup and reads `done.json`. See PROJECT.md for the charter and README → Setup → 6.
+
 Generated outputs in the briefings volume:
 - `YYYY/MM/DD.html` — permanent dated archive
 - `today.html` — latest pointer, overwritten each morning
@@ -33,6 +35,7 @@ briefing/                  Python package (the actual code)
   etsy_auth.py             Etsy OAuth tokens (load + auto-refresh)
   llm.py                   OpenAI SDK wrapper pointed at the local LiteLLM proxy
   render.py                Jinja2 HTML renderer
+  actions.py               "Mark complete" HTTP service (own image, stdlib only; not run by run.py)
   sources/                 One module per data source, each exposes fetch() -> SectionResult
     calendar.py            Full
     email.py               Full (LLM triage)
@@ -43,6 +46,7 @@ briefing/                  Python package (the actual code)
     briefing.html.j2       Per-day briefing HTML (responsive, dark mode)
     index.html.j2          Archive index (year/month groups, newest first)
     theme.js               Light/dark toggle; inlined by render.py and allowed by CSP hash
+    done.js                Page script for meeting-prep briefs; served by actions.py at /api/done.js (external file, not inlined)
 
 tests/                     pytest — link sanitizing + CSP (pip install -e ".[dev]"; pytest)
 
@@ -112,6 +116,8 @@ Every new source requires changes in **four** places. Missing any one causes a s
 - **Etsy status strings are title-cased** — the API returns `"Paid"`, `"Canceled"`, `"Completed"`, not lowercase. Always compare with `.lower()`. Active unshipped orders have `status="Paid"`; `status="open"` means unpaid/pending, not active.
 - **Anthropic `/api/oauth/usage` rate limit** — ~24h backoff if hit too fast. Minimum 300s. The daily briefing is well under, but never put it on a fast retry loop.
 - **Anthropic token endpoint needs a JSON body** — `console.anthropic.com/v1/oauth/token` 400s on `application/x-www-form-urlencoded`. Both the refresh (`anthropic_auth._refresh`) and the bootstrap code-exchange must POST a JSON body (`Content-Type: application/json`), matching `trickv/hass-claude-usage`. A stale access token can mask this for months since the refresh path isn't exercised until the token expires.
+- **Kanban's JSON has capitalised keys** — the Go `Card` struct has no json tags, so `GET /api/cards` returns `ID`, `Status`, … (PATCH bodies are lowercase: `{"status": "done"}`). There is no single-card GET; `actions.py` reads the list. Status slugs are unhyphenated (`inprogress`, `needsfeedback`, `done`).
+- **Meeting-prep skill has several copies** — `D:\Github\skills\meeting-prep` (template + packaged `.skill`), `~\.claude\skills\meeting-prep` (Claude Code), and the claude.ai-synced copy under `AppData\Roaming\Claude\local-agent-mode-sessions\skills-plugin\…` (a mirror: edits there are overwritten; change the uploaded skill instead). They had drifted apart by Nov 2026; whichever runs the briefs must carry the checkbox markup and done-list rules.
 - **Feed links are untrusted** — feedparser passes `javascript:` / `data:` links through unchanged, and Jinja autoescaping doesn't neutralize a URL scheme. That's why every dynamic `href` goes through `|sanitize_url` (http/https/relative only; anything else becomes `#` and logs a warning).
 
 ## Memory files (deeper context)
