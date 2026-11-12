@@ -1,0 +1,21 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# "Mark complete" service for meeting-prep briefs (briefing/actions.py).
+# Standard library only, so there is no pip install and nothing else to patch.
+COPY briefing/__init__.py ./briefing/__init__.py
+COPY briefing/actions.py ./briefing/actions.py
+COPY briefing/templates/done.js ./briefing/templates/done.js
+
+# Volume mount provided by Unraid:
+#   /app/state  — done.json (RW). Mount the meeting_prep/_state folder so the
+#                 meeting-prep skill can read it over the M: share.
+# Env vars: KANBAN_URL, KANBAN_API_KEY (optional; without them cards are not
+#           updated), BRIEFING_ACTIONS_PORT (default 8183; 8182 is Tautulli on the host).
+EXPOSE 8183
+
+CMD ["python", "-m", "briefing.actions"]
