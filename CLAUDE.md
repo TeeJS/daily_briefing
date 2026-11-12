@@ -16,7 +16,7 @@ Three components on noraid:
 2. **Static webserver** — `nginx:alpine` container, always on, mounts `/mnt/user/data/websites/briefing` read-only at `/usr/share/nginx/html`, listens on host port 8181.
 3. **NPMPlus** — terminates HTTPS for `briefing.schmitzplex.com`, applies basic auth, forwards to `localhost:8181`.
 
-A fourth, optional component serves the "Mark complete" button on meeting-prep briefs: `briefing/actions.py` in its own image (`Dockerfile.actions`, stdlib only, port 8183), reached at `briefing.schmitzplex.com/api/` through an NPMPlus custom location behind the same basic auth. It owns `done.json` (in `meeting_prep/_state/`, written RW; the daily generator never touches it) and holds the kanban API key. The meeting-prep skill (not this repo) generates the brief HTML with the checkbox markup and reads `done.json`. See PROJECT.md for the charter and README → Setup → 6.
+A fourth, optional component serves the "Mark complete" button on meeting-prep briefs: `briefing/actions.py` in its own image (`Dockerfile.actions`, stdlib only, port 8183), reached at `briefing.schmitzplex.com/api/` through an NPMPlus custom location behind the same Authelia login (the host's `location /` uses an `auth_request` to Authelia; the `/api/` location must too). It owns `done.json` (in `meeting_prep/_state/`, written RW; the daily generator never touches it) and holds the kanban API key. The meeting-prep skill (not this repo) generates the brief HTML with the checkbox markup and reads `done.json`. See PROJECT.md for the charter and README → Setup → 6.
 
 Generated outputs in the briefings volume:
 - `YYYY/MM/DD.html` — permanent dated archive

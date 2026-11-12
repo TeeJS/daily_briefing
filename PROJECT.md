@@ -30,7 +30,7 @@ has a kanban card, the card moves to Done.
 ## 4. Deployment target and backup location
 
 - **Service:** small new container on Unraid, `:latest` (never pinned), reached at
-  `briefing.schmitzplex.com/api/` through NPM Plus behind the **existing basic auth**
+  `briefing.schmitzplex.com/api/` through NPM Plus behind the host's **existing Authelia login**
   (same origin, no CORS).
 - **State:** `done.json` in `M:\meetings\meeting_prep\_state\` (`/mnt/user/data/meetings/meeting_prep/_state`
   on Unraid) — inside the folder the nightly job saves briefs to; T.J. fixed that root on 2026-11-11 and

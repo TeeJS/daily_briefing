@@ -1,7 +1,7 @@
 """'Mark complete' service for meeting-prep briefs.
 
 A tiny HTTP service reached at briefing.schmitzplex.com/api/ (NPM Plus forwards
-that path here, behind the same basic auth as the rest of the site). It is the
+that path here, behind the same Authelia login as the rest of the site). It is the
 only writer of ``done.json`` and the only holder of the kanban API key; the
 brief's page script (``templates/done.js``, served from here) just calls it.
 

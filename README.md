@@ -145,7 +145,7 @@ A small second container (`ghcr.io/teejs/daily_briefing-actions:latest`, built f
 | `KANBAN_URL` | `http://192.168.1.25:17808` | The kanban app's own port, from golang-kanban's `docker-compose.yml` |
 | `KANBAN_API_KEY` | your kanban API key (mask it) | The key kanban's `X-API-Key` login accepts — the same one the `kanban-mcp` container uses |
 
-Without the two kanban variables the list still works; ticking a card-backed row just reports "kanban is not connected". NPM Plus: on the `briefing.schmitzplex.com` proxy host add a custom location `/api/` forwarding to `http://192.168.1.25:8183` (the host's existing basic auth stays in front). State-changing requests must carry an `X-Briefing-Action: 1` header and a same-host `Origin`, which is what blocks cross-site clicks.
+Without the two kanban variables the list still works; ticking a card-backed row just reports "kanban is not connected". NPM Plus: on the `briefing.schmitzplex.com` proxy host add a custom location `/api/` forwarding to `http://192.168.1.25:8183` (the host is protected by Authelia, not basic auth; after adding the location, confirm an unauthenticated request to `/api/done` is redirected to the login instead of answered). State-changing requests must carry an `X-Briefing-Action: 1` header and a same-host `Origin`, which is what blocks cross-site clicks.
 
 ## Local development
 
