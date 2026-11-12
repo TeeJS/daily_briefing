@@ -1,23 +1,28 @@
 # daily_briefing
 
-A scheduled job that writes a daily HTML file summarizing the things I want to start each day with. The same HTML is served from `briefing.schmitzplex.com` (planned) — that's the user-facing distribution channel. The job has zero send/modify authority on any account; Google OAuth scopes are read-only.
+A scheduled job that writes a daily HTML file summarizing the things I want to start each day with. The same HTML is served from `briefing.schmitzplex.com` — that's the user-facing distribution channel. The job has zero send/modify authority on any account; Google OAuth scopes are read-only.
 
 ## What the briefing contains
 
-Each morning at 6:00 AM Mountain Time:
+Each morning at 6:00 AM Mountain Time, in this layout order. No LLM is involved: every section is a direct query or feed, and each one fails on its own, so a broken section shows an error block while the rest of the page still ships.
 
-- **Daily schedule** — today's calendar events across 6 of my 8 Google calendars (kids' calendars excluded).
-- **Important emails** — last 24h of inbox, broadly pre-filtered by Gmail category, then LLM-triaged into *Action today* and *FYI*. Starred items always included.
-- **Claude account usage** — current 5-hour window, weekly limits, weekly Sonnet limits, and extra-usage credits used / available. Pulled from the undocumented OAuth endpoint Claude Code itself uses.
-- **Etsy outstanding orders** — unshipped receipts grouped by overdue / due-soon / other, with ship-by dates.
-- **News digest** — 7 subsections, each curated by the LLM down to 3–5 "water cooler" items:
-  1. World news
-  2. US news
-  3. Regional (Utah + Springville)
-  4. NWPX (Northwest Pipe Infrastructure + subsidiaries: NWPX Geneva, NWPX Park, Boughton's Precast) — stock price, new SEC filings, press releases, news mentions
-  5. ERP / precast software (SAP, Muka Development Group, Titan 3000)
-  6. AI (high-level breakthroughs, new Claude features)
-  7. LDS Church newsroom
+- **Today's schedule** — today's events from the Google calendars listed in `INCLUDED_CALENDARS` (`briefing/config.py`): all-day events first, then timed ones. When the job runs after noon, tomorrow's events are added.
+- **Meeting prep** — links to that day's meeting-prep briefs, which a separate overnight job writes. Hidden when there are none. Action items on a brief can be ticked off with the "Mark complete" button (see Setup → 6).
+- **Freshservice — unassigned** — tickets with no agent in the Titan Admins and SAP Basis Admins groups, created in the last 6 months. It mirrors the kanban board's Unassigned column.
+- **Etsy orders to ship** — unshipped paid receipts grouped as overdue, due within 3 days, and other, with ship-by dates.
+- **Claude usage** — the 5-hour session, 7-day (all models) and 7-day Sonnet limits, plus extra-usage dollars when that is enabled. Pulled from the undocumented OAuth endpoint Claude Code itself uses.
+- **Codex usage** — the Codex (ChatGPT) rate-limit windows, labelled from the window lengths the endpoint returns (about 5 hours and weekly).
+- **News** — seven RSS-fed subsections, newest first and each capped, with no LLM curation:
+  1. World
+  2. United States
+  3. NWPX Infrastructure — press releases and the company blog, last 15 days
+  4. SAP — a Google News search for SAP with stock-promotion and off-topic sources filtered out
+  5. Utah / Local — last 7 days
+  6. LDS Church Newsroom
+  7. AI — six feeds, last 2 days
+- **Events this week** — a weekly feed of local movies and venue events.
+- **Work email — unread** — unread Focused-inbox messages from the last 7 days in the work Outlook. Unraid can't reach Outlook, so a Windows scheduled task (`scripts/prefetch_outlook.py`, 5:45 AM) writes them to the archive share first. A placeholder shows if that file is missing or more than 24 hours old.
+- **Unread / starred email** — Gmail: unread Primary-tab threads from the last 7 days plus starred inbox threads from the last 30 days, oldest first. No triage or classification.
 
 ## Architecture
 
@@ -55,7 +60,7 @@ Each morning at 6:00 AM Mountain Time:
 
 ## Status
 
-Scaffolding + calendar section + email delivery are functional. The other four sources currently render placeholder blocks; they'll be filled in incrementally without breaking the running pipeline.
+Every section listed above is live. A source that fails to fetch renders an error block (with the command that fixes it) instead of breaking the page. No email is sent; the HTML page is the only output.
 
 ## Setup
 
