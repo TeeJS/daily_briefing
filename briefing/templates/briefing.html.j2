@@ -526,20 +526,18 @@
     </button>
   </div>
 
-  <!-- ===== Row 1: Calendar + Etsy + Claude Usage (left) | Meeting Prep + Email + Freshservice + Outlook (right) ===== -->
+  <!-- ===== Row 1: Calendar (left) | Meeting Prep + Freshservice + Etsy + Claude/Codex Usage (right) ===== -->
 
   <div class="cols" style="margin-bottom:24px;">
     <div>
       {{ cal_block(calendar) }}
-      <div style="margin-top:24px;">{{ etsy_block(etsy) }}</div>
-      <div style="margin-top:24px;">{{ claude_block(claude_usage) }}</div>
-      <div style="margin-top:24px;">{{ codex_block(codex_usage) }}</div>
     </div>
     <div>
       {{ meeting_prep_block(meeting_prep) }}
-      {{ email_block(email) }}
-      <div style="margin-top:24px;">{{ freshservice_block(freshservice) }}</div>
-      <div style="margin-top:24px;">{{ outlook_block(outlook) }}</div>
+      {{ freshservice_block(freshservice) }}
+      <div style="margin-top:24px;">{{ etsy_block(etsy) }}</div>
+      <div style="margin-top:24px;">{{ claude_block(claude_usage) }}</div>
+      <div style="margin-top:24px;">{{ codex_block(codex_usage) }}</div>
     </div>
   </div>
 
@@ -550,6 +548,13 @@
   <!-- ===== Row 3: Events (full width) ===== -->
 
   <div style="margin-bottom:24px;">{{ events_block(events) }}</div>
+
+  <!-- ===== Row 4: Unread email — work/Outlook (left) | Gmail (right) ===== -->
+
+  <div class="cols" style="margin-bottom:24px;">
+    <div>{{ outlook_block(outlook) }}</div>
+    <div>{{ email_block(email) }}</div>
+  </div>
 
   <!-- ===== Footer ===== -->
 

@@ -118,6 +118,7 @@ Every new source requires changes in **four** places. Missing any one causes a s
 - **Anthropic token endpoint needs a JSON body** — `console.anthropic.com/v1/oauth/token` 400s on `application/x-www-form-urlencoded`. Both the refresh (`anthropic_auth._refresh`) and the bootstrap code-exchange must POST a JSON body (`Content-Type: application/json`), matching `trickv/hass-claude-usage`. A stale access token can mask this for months since the refresh path isn't exercised until the token expires.
 - **Kanban's JSON has capitalised keys** — the Go `Card` struct has no json tags, so `GET /api/cards` returns `ID`, `Status`, … (PATCH bodies are lowercase: `{"status": "done"}`). There is no single-card GET; `actions.py` reads the list. Status slugs are unhyphenated (`inprogress`, `needsfeedback`, `done`).
 - **Meeting-prep skill has several copies** — `D:\Github\skills\meeting-prep` (template + packaged `.skill`), `~\.claude\skills\meeting-prep` (Claude Code), and the claude.ai-synced copy under `AppData\Roaming\Claude\local-agent-mode-sessions\skills-plugin\…` (a mirror: edits there are overwritten; change the uploaded skill instead). They had drifted apart by Nov 2026; whichever runs the briefs must carry the checkbox markup and done-list rules.
+- **Events feed must use the internal URL** — `temples.schmitzplex.com` sits behind Authelia, so the public `events.json` URL 302s to a login page and the section fails with `Expecting value: line 1 column 1 (char 0)`. The run command sets `EVENTS_URL=http://192.168.1.25:8087/events.json` (the `templesandhouses-web` nginx, no auth).
 - **Feed links are untrusted** — feedparser passes `javascript:` / `data:` links through unchanged, and Jinja autoescaping doesn't neutralize a URL scheme. That's why every dynamic `href` goes through `|sanitize_url` (http/https/relative only; anything else becomes `#` and logs a warning).
 
 ## Memory files (deeper context)
@@ -142,7 +143,7 @@ $env:BRIEFING_ARCHIVE_DIR = ".\preview\briefings"
 $env:BRIEFING_LOGS_DIR = ".\preview\logs"
 # Point at the real meeting-prep share to exercise the Meeting Prep section
 # (files live under YYYY\MM\DD\; use --date to hit a day that has one).
-$env:BRIEFING_MEETING_PREP_DIR = "M:\media\meetings\meeting_prep"
+$env:BRIEFING_MEETING_PREP_DIR = "M:\meetings\meeting_prep"
 python -m briefing.run
 ```
 
