@@ -23,10 +23,10 @@ Each morning at 6:00 AM Mountain Time:
 
 - **Runtime**: ephemeral Docker container running on the main Unraid server (`noraid.schmitzplex.com`).
 - **Schedule**: Unraid User Scripts plugin, cron `0 6 * * *` (America/Denver).
-- **LLM**: local — calls the LiteLLM proxy on the other Unraid server (`lite.schmitzplex.com:4000`). LiteLLM routes to a llama.cpp backend. The Anthropic API is not called at runtime.
+- **LLM**: none at runtime (dropped 2026-05-19). `briefing/llm.py` is still in the repo but nothing calls it, and `LLM_BASE_URL` / `LLM_MODEL` are not set. The Anthropic API is not called either.
 - **Image**: built by GitHub Actions on push to `main`, pushed to `ghcr.io/teejs/daily_briefing:latest`.
-- **State** (secrets, OAuth tokens, daily archive, logs) lives on Unraid at `/mnt/user/appdata/daily_briefing/`, mounted into the container. Nothing stateful in the image.
-- **Delivery**: HTML file written to `/mnt/user/appdata/daily_briefing/briefings/YYYY/MM/DD.html`. The reverse proxy on Unraid (Caddy / SWAG / nginx-proxy-manager — whichever's configured) serves that directory at `briefing.schmitzplex.com`. No email is sent; the briefing's Google OAuth grant is read-only (calendar + inbox view), with no send authority.
+- **State** lives on Unraid and is mounted into the container; nothing stateful in the image. Secrets, OAuth tokens and logs are under `/mnt/user/appdata/daily_briefing/`; the daily archive is `/mnt/user/data/websites/briefing/`.
+- **Delivery**: HTML file written to `/mnt/user/data/websites/briefing/YYYY/MM/DD.html`. An always-on `nginx:alpine` container (`briefing_web`, port 8181) serves that directory, and NPM Plus publishes it at `briefing.schmitzplex.com` behind Authelia. No email is sent; the briefing's Google OAuth grant is read-only (calendar + inbox view), with no send authority.
 
 ## Repo layout
 
@@ -80,9 +80,8 @@ Both scopes are read-only. The briefing job has no send/modify authority on the 
 
 ### 2. Unraid
 
-- Create the directory tree `/mnt/user/appdata/daily_briefing/{secrets,briefings,logs,prompts}`.
+- Create `/mnt/user/appdata/daily_briefing/{secrets,logs}` for tokens and logs, and `/mnt/user/data/websites/briefing/` for the archive that `briefing_web` serves.
 - Place `google_client_secret.json` and `google_tokens.json` (from the bootstrap step above) in `secrets/`.
-- Optionally place a custom email-triage prompt at `prompts/email_triage.txt` to override the embedded default. The container reads it at the start of every run, so edits take effect on the next `docker run` (no rebuild). Omit the file to use the built-in prompt.
 - Install the **User Scripts** plugin from Community Apps.
 - Add a new script with cron schedule `0 6 * * *` and this body:
   ```bash
@@ -91,15 +90,15 @@ Both scopes are read-only. The briefing job has no send/modify authority on the 
   docker run --rm \
     --name daily_briefing \
     -v /mnt/user/appdata/daily_briefing/secrets:/app/secrets \
-    -v /mnt/user/appdata/daily_briefing/briefings:/app/briefings \
+    -v /mnt/user/data/websites/briefing:/app/briefings \
     -v /mnt/user/appdata/daily_briefing/logs:/app/logs \
-    -v /mnt/user/appdata/daily_briefing/prompts:/app/prompts \
     -v /mnt/user/data/meetings/meeting_prep:/app/meeting_prep:ro \
     -e EVENTS_URL=http://192.168.1.25:8087/events.json \
-    -e LLM_BASE_URL=http://lite.schmitzplex.com:4000/v1 \
-    -e LLM_MODEL=<your-litellm-model-name> \
     -e TZ=America/Denver \
     -e ETSY_CLIENT_ID=<your-etsy-keystring> \
+    -e ETSY_CLIENT_SECRET=<your-etsy-shared-secret> \
+    -e FRESHSERVICE_DOMAIN=<your-domain>.freshservice.com \
+    -e FRESHSERVICE_APIKEY=<your-freshservice-api-key> \
     ghcr.io/teejs/daily_briefing:latest
   ```
 
@@ -129,7 +128,7 @@ The script opens the authorize URL, you authorize in your browser, and the redir
    python scripts/bootstrap_etsy_oauth.py
    ```
    It opens the Etsy authorize URL. After you authorize, your browser redirects to your callback URL (the page may 404 — that's fine). Copy the **full URL** from your address bar and paste it back into the script. It extracts the code, exchanges for tokens, looks up your `shop_id`, and writes everything to `secrets/etsy_tokens.json`.
-4. On Unraid, the same `ETSY_CLIENT_ID` env var must also be set in the User Scripts `docker run` command (used during refresh). `ETSY_REDIRECT_URI` is only needed at bootstrap time, not at runtime.
+4. On Unraid, the same `ETSY_CLIENT_ID` and `ETSY_CLIENT_SECRET` env vars must also be set in the User Scripts `docker run` command (both are used during refresh). `ETSY_REDIRECT_URI` is only needed at bootstrap time, not at runtime.
 
 ### 5. (Later) News digest data sources
 

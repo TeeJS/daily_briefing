@@ -4,7 +4,7 @@ Context for future Claude Code sessions working on this repo. Read this first.
 
 ## What this is
 
-A scheduled daily briefing rendered as a static HTML file. Runs in a Docker container on Unraid (`noraid.schmitzplex.com`) at 6 AM MT, pulls data from 5 sources, and writes one self-contained HTML document to `/mnt/user/data/websites/briefing/YYYY/MM/DD.html`. An always-on `nginx:alpine` container serves that directory on port 8181; NPMPlus proxies `briefing.schmitzplex.com` to it with basic auth. **No email is sent** — the Google OAuth grant is read-only (calendar + inbox view) and the job has no send/modify authority anywhere.
+A scheduled daily briefing rendered as a static HTML file. Runs in a Docker container on Unraid (`noraid.schmitzplex.com`) at 6 AM MT, pulls data from 5 sources, and writes one self-contained HTML document to `/mnt/user/data/websites/briefing/YYYY/MM/DD.html`. An always-on `nginx:alpine` container serves that directory on port 8181; NPMPlus proxies `briefing.schmitzplex.com` to it behind Authelia. **No email is sent** — the Google OAuth grant is read-only (calendar + inbox view) and the job has no send/modify authority anywhere.
 
 User: TJ Schmitz (teejschmitz@gmail.com), running on Windows 11.
 
@@ -14,7 +14,7 @@ Three components on noraid:
 
 1. **Daily generator** (this repo's container) — runs once/day via Unraid User Scripts cron at 6 AM MT, writes today's HTML + updates `index.html` / `today.html` / `robots.txt`, exits.
 2. **Static webserver** — `nginx:alpine` container, always on, mounts `/mnt/user/data/websites/briefing` read-only at `/usr/share/nginx/html`, listens on host port 8181.
-3. **NPMPlus** — terminates HTTPS for `briefing.schmitzplex.com`, applies basic auth, forwards to `localhost:8181`.
+3. **NPMPlus** — terminates HTTPS for `briefing.schmitzplex.com`, protects it with Authelia (an `auth_request` to `auth.schmitzplex.com`, not basic auth), forwards to `localhost:8181`.
 
 A fourth, optional component serves the "Mark complete" button on meeting-prep briefs: `briefing/actions.py` in its own image (`Dockerfile.actions`, stdlib only, port 8183), reached at `briefing.schmitzplex.com/api/` through an NPMPlus custom location behind the same Authelia login (the host's `location /` uses an `auth_request` to Authelia; the `/api/` location must too). It owns `done.json` (in `meeting_prep/_state/`, written RW; the daily generator never touches it) and holds the kanban API key. The meeting-prep skill (not this repo) generates the brief HTML with the checkbox markup and reads `done.json`. See PROJECT.md for the charter and README → Setup → 6.
 
@@ -22,7 +22,7 @@ Generated outputs in the briefings volume:
 - `YYYY/MM/DD.html` — permanent dated archive
 - `today.html` — latest pointer, overwritten each morning
 - `index.html` — archive listing grouped by year → month (newest first)
-- `robots.txt` — `Disallow: /` (defense-in-depth alongside basic auth)
+- `robots.txt` — `Disallow: /` (defense-in-depth alongside Authelia)
 
 ## Repo layout
 
